@@ -15,118 +15,113 @@
 
 namespace RType {
 
-namespace net {
+    namespace net {
 
-/*
-    @brief Message Header is sent at start of all messages. The template allows us
-    to use "enum class" to ensure that the messages are valid at compile time
+        /*
+            @brief Message Header is sent at start of all messages. The template allows us
+            to use "enum class" to ensure that the messages are valid at compile time
 
-    @tparam id Message type
-    @param size Message size
-*/
-template <typename T>
-struct message_header {
-    T id{};
-    uint32_t size = 0;
-};
+            @tparam T Message type
+        */
+        template <typename T>
+        struct message_header {
+            T id{};
+            uint32_t size = 0;
+        };
 
-// Message Body contains a header and a std::vector, containing raw bytes
-// of infomation. This way the message can be variable length, but the size
-// in the header must be updated.
+        /*
+            @struct message
+            @brief Message Body contains a header and a std::vector, containing raw bytes
+            of infomation. This way the message can be variable length, but the size
+            in the header must be updated.
 
-/*
-    @brief Message Body contains a header and a std::vector, containing raw bytes
-    of infomation. This way the message can be variable length, but the size
-    in the header must be updated.
+            @tparam T Message type
+        */
+        template <typename T>
+        struct message {
+            message_header<T> header{};
+            std::vector<uint8_t> body;
 
-    @tparam T Message type
-*/
-template <typename T>
-struct message {
-    // Header & Body vector
-    message_header<T> header{};
-    std::vector<uint8_t> body;
+            /*
+                @brief Returns size of entire message packet in bytes
+            */
+            size_t size() const {
+                return body.size();
+            }
 
-    // returns size of entire message packet in bytes
-    size_t size() const {
-        return body.size();
-    }
+            /*
+                @brief Returns a friendly description of the message
+            */
+            friend std::ostream& operator<<(std::ostream& os, const message<T>& msg) {
+                os << "ID:" << int(msg.header.id) << " Size:" << msg.header.size;
+                return os;
+            }
 
-    // Override for std::cout compatibility - produces friendly description of message
-    friend std::ostream& operator<<(std::ostream& os, const message<T>& msg) {
-        os << "ID:" << int(msg.header.id) << " Size:" << msg.header.size;
-        return os;
-    }
+            /*
+                @brief Pushes any POD-like data into the message buffer
 
-    // Convenience Operator overloads - These allow us to add and remove stuff from
-    // the body vector as if it were a stack, so First in, Last Out. These are a
-    // template in itself, because we dont know what data type the user is pushing or
-    // popping, so lets allow them all. NOTE: It assumes the data type is fundamentally
-    // Plain Old Data (POD). TLDR: Serialise & Deserialise into/from a vector
+                @tparam DataType POD-like data type
 
-    // Pushes any POD-like data into the message buffer
-    template <typename DataType>
-    friend message<T>& operator<<(message<T>& msg, const DataType& data) {
-        // Check that the type of the data being pushed is trivially copyable
-        static_assert(std::is_standard_layout<DataType>::value, "Data is too complex to be pushed into vector");
+                @param data POD-like data to push into buffer
 
-        // Cache current size of vector, as this will be the point we insert the data
-        size_t i = msg.body.size();
+                @return message<T>&
+            */
+            template <typename DataType>
+            friend message<T>& operator<<(message<T>& msg, const DataType& data) {
+                static_assert(std::is_standard_layout<DataType>::value, "Data is too complex to be pushed into vector");
 
-        // Resize the vector by the size of the data being pushed
-        msg.body.resize(msg.body.size() + sizeof(DataType));
+                size_t i = msg.body.size();
 
-        // Physically copy the data into the newly allocated vector space
-        std::memcpy(msg.body.data() + i, &data, sizeof(DataType));
+                msg.body.resize(msg.body.size() + sizeof(DataType));
+                std::memcpy(msg.body.data() + i, &data, sizeof(DataType));
+                msg.header.size = msg.size();
 
-        // Recalculate the message size
-        msg.header.size = msg.size();
+                return msg;
+            }
 
-        // Return the target message so it can be "chained"
-        return msg;
-    }
+            /*
+                @brief Pulls any POD-like data form the message buffer
 
-    // Pulls any POD-like data form the message buffer
-    template <typename DataType>
-    friend message<T>& operator>>(message<T>& msg, DataType& data) {
-        // Check that the type of the data being pushed is trivially copyable
-        static_assert(std::is_standard_layout<DataType>::value, "Data is too complex to be pulled from vector");
+                @tparam DataType POD-like data type
 
-        // Cache the location towards the end of the vector where the pulled data starts
-        size_t i = msg.body.size() - sizeof(DataType);
+                @param data POD-like data to pull from buffer
 
-        // Physically copy the data from the vector into the user variable
-        std::memcpy(&data, msg.body.data() + i, sizeof(DataType));
+                @return message<T>&
+            */
+            template <typename DataType>
+            friend message<T>& operator>>(message<T>& msg, DataType& data) {
+                static_assert(std::is_standard_layout<DataType>::value, "Data is too complex to be pulled from vector");
 
-        // Shrink the vector to remove read bytes, and reset end position
-        msg.body.resize(i);
+                size_t i = msg.body.size() - sizeof(DataType);
 
-        // Recalculate the message size
-        msg.header.size = msg.size();
+                std::memcpy(&data, msg.body.data() + i, sizeof(DataType));
+                msg.body.resize(i);
+                msg.header.size = msg.size();
 
-        // Return the target message so it can be "chained"
-        return msg;
-    }
-};
+                return msg;
+            }
+        };
 
-// An "owned" message is identical to a regular message, but it is associated with
-// a connection. On a server, the owner would be the client that sent the message,
-// on a client the owner would be the server.
+        template <typename T>
+        class connection;
 
-// Forward declare the connection
-template <typename T>
-class connection;
+        /*
+            @struct owned_message
+            @brief An "owned" message is identical to a regular message, but it is associated with
+            a connection. On a server, the owner would be the client that sent the message,
+            on a client the owner would be the server.
 
-template <typename T>
-struct owned_message {
-    std::shared_ptr<connection<T>> remote = nullptr;
-    message<T> msg;
+            @tparam T Message type
+        */
+        template <typename T>
+        struct owned_message {
+            std::shared_ptr<connection<T>> remote = nullptr;
+            message<T> msg;
 
-    // Again, a friendly string maker
-    friend std::ostream& operator<<(std::ostream& os, const owned_message<T>& msg) {
-        os << msg.msg;
-        return os;
-    }
-};
-}  // namespace net
+            friend std::ostream& operator<<(std::ostream& os, const owned_message<T>& msg) {
+                os << msg.msg;
+                return os;
+            }
+        };
+    }  // namespace net
 }  // namespace RType
