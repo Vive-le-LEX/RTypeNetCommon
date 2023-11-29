@@ -9,8 +9,11 @@
  * from Kleo ©.
  */
 
-#include <rtype_net.hpp>
+#pragma once
 
-int main() {
-    return 0;
-}
+#include "net_client.hpp"
+#include "net_common.hpp"
+#include "net_connection.hpp"
+#include "net_message.hpp"
+#include "net_server.hpp"
+#include "net_tsqueue.hpp"

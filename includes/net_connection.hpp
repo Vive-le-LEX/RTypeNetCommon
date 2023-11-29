@@ -12,7 +12,8 @@
 #pragma once
 
 #include "net_common.hpp"
-
+#include "net_message.hpp"
+#include "net_tsqueue.hpp"
 namespace RType {
     namespace net {
         /*
@@ -48,7 +49,7 @@ namespace RType {
                 @param qIn Reference to incoming message queue
             */
             connection(owner parent, asio::io_context& asioContext, asio::ip::tcp::socket socket, tsqueue<owned_message<T>>& qIn)
-                : asioContext(asioContext), socket(std::move(socket)), qMessagesIn(qIn) {
+                : asioContext(asioContext), socket(std::move(socket)), incomingMessages(qIn) {
                 ownerType = parent;
             }
 
@@ -56,7 +57,6 @@ namespace RType {
 
             /*
                 @brief Get the ID of this connection
-
                 @return uint32_t ID of this connection
             */
             uint32_t GetID() const {
@@ -65,7 +65,6 @@ namespace RType {
 
             /*
                 @brief Connect to a client
-
                 @param uid ID of the client
             */
             void ConnectToClient(uint32_t uid = 0) {
@@ -79,13 +78,10 @@ namespace RType {
 
             /*
                 @brief Connect to a server
-
                 @param endpoints Endpoints of the server
             */
             void ConnectToServer(const asio::ip::tcp::resolver::results_type& endpoints) {
-                // Only clients can connect to servers
                 if (ownerType == owner::client) {
-                    // Request asio attempts to connect to an endpoint
                     asio::async_connect(socket, endpoints, [this](std::error_code ec, asio::ip::tcp::endpoint endpoint) {
                         if (!ec) {
                             ReadHeader();
@@ -104,7 +100,6 @@ namespace RType {
 
             /*
                 @brief Check if this connection is still active
-
                 @return true if this connection is still active, false otherwise
             */
             bool IsConnected() const {
@@ -120,20 +115,14 @@ namespace RType {
             /*
                 @brief Send a message to either a client or a server depending on
                 the owner type
-
                 @param msg Message to send
             */
             void Send(const message<T>& msg) {
                 asio::post(asioContext,
                            [this, msg]() {
-                               // If the queue has a message in it, then we must
-                               // assume that it is in the process of asynchronously being written.
-                               // Either way add the message to the queue to be output. If no messages
-                               // were available to be written, then start the process of writing the
-                               // message at the front of the queue.
-                               bool bWritingMessage = !qMessagesOut.empty();
-                               qMessagesOut.push_back(msg);
-                               if (!bWritingMessage) {
+                               bool writingMessage = !outgoingMessages.empty();
+                               outgoingMessages.push_back(msg);
+                               if (!writingMessage) {
                                    WriteHeader();
                                }
                            });
@@ -144,15 +133,15 @@ namespace RType {
                 @brief Write a message header, this function is Asynchronous
             */
             void WriteHeader() {
-                asio::async_write(socket, asio::buffer(&qMessagesOut.front().header, sizeof(message_header<T>)),
+                asio::async_write(socket, asio::buffer(&outgoingMessages.front().header, sizeof(message_header<T>)),
                                   [this](std::error_code ec, std::size_t length) {
                                       if (!ec) {
-                                          if (qMessagesOut.front().body.size() > 0) {
+                                          if (outgoingMessages.front().body.size() > 0) {
                                               WriteBody();
                                           } else {
-                                              qMessagesOut.pop_front();
+                                              outgoingMessages.pop_front();
 
-                                              if (!qMessagesOut.empty()) {
+                                              if (!outgoingMessages.empty()) {
                                                   WriteHeader();
                                               }
                                           }
@@ -167,12 +156,12 @@ namespace RType {
                 @brief Write a message body, this function is Asynchronous
             */
             void WriteBody() {
-                asio::async_write(socket, asio::buffer(qMessagesOut.front().body.data(), qMessagesOut.front().body.size()),
+                asio::async_write(socket, asio::buffer(outgoingMessages.front().body.data(), outgoingMessages.front().body.size()),
                                   [this](std::error_code ec, std::size_t length) {
                                       if (!ec) {
-                                          qMessagesOut.pop_front();
+                                          outgoingMessages.pop_front();
 
-                                          if (!qMessagesOut.empty()) {
+                                          if (!outgoingMessages.empty()) {
                                               WriteHeader();
                                           }
                                       } else {
@@ -188,11 +177,11 @@ namespace RType {
                 enough bytes to form a header of a message.
             */
             void ReadHeader() {
-                asio::async_read(socket, asio::buffer(&msgTemporaryIn.header, sizeof(message_header<T>)),
+                asio::async_read(socket, asio::buffer(&tempIncomingMessage.header, sizeof(message_header<T>)),
                                  [this](std::error_code ec, std::size_t length) {
                                      if (!ec) {
-                                         if (msgTemporaryIn.header.size > 0) {
-                                             msgTemporaryIn.body.resize(msgTemporaryIn.header.size);
+                                         if (tempIncomingMessage.header.size > 0) {
+                                             tempIncomingMessage.body.resize(tempIncomingMessage.header.size);
                                              ReadBody();
                                          } else {
                                              AddToIncomingMessageQueue();
@@ -210,7 +199,7 @@ namespace RType {
                 request we read a body, of the specified size, into the message buffer.
             */
             void ReadBody() {
-                asio::async_read(socket, asio::buffer(msgTemporaryIn.body.data(), msgTemporaryIn.body.size()),
+                asio::async_read(socket, asio::buffer(tempIncomingMessage.body.data(), tempIncomingMessage.body.size()),
                                  [this](std::error_code ec, std::size_t length) {
                                      if (!ec) {
                                          AddToIncomingMessageQueue();
@@ -226,9 +215,9 @@ namespace RType {
             */
             void AddToIncomingMessageQueue() {
                 if (ownerType == owner::server)
-                    qMessagesIn.push_back({this->shared_from_this(), msgTemporaryIn});
+                    incomingMessages.push_back({this->shared_from_this(), tempIncomingMessage});
                 else
-                    qMessagesIn.push_back({nullptr, msgTemporaryIn});
+                    incomingMessages.push_back({nullptr, tempIncomingMessage});
 
                 ReadHeader();
             }
@@ -247,17 +236,17 @@ namespace RType {
             /*
                 @brief Queue of outgoing messages
             */
-            tsqueue<message<T>> qMessagesOut;
+            tsqueue<message<T>> outgoingMessages;
 
             /*
                 @brief Reference to incoming message queue
             */
-            tsqueue<owned_message<T>>& qMessagesIn;
+            tsqueue<owned_message<T>>& incomingMessages;
 
             /*
                 @brief Temporary message
             */
-            message<T> msgTemporaryIn;
+            message<T> tempIncomingMessage;
 
             /*
                 @brief Owner type

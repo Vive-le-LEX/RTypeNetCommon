@@ -24,9 +24,33 @@
 
 #ifdef _WIN32
 #define _WIN32_WINNT 0x0A00
+#elif __linux__
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 #endif
 
 #define ASIO_STANDALONE
 #include <asio.hpp>
 #include <asio/ts/buffer.hpp>
 #include <asio/ts/internet.hpp>
+
+
+//----------------------------------------------------------------
+// Utilities
+//----------------------------------------------------------------
+
+inline std::string getIp(void) {
+    int fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+
+    struct ifreq ifr {};
+    strcpy(ifr.ifr_name, "wlo1");
+    ioctl(fd, SIOCGIFADDR, &ifr);
+    close(fd);
+
+    char ip[INET_ADDRSTRLEN];
+    strcpy(ip, inet_ntoa(((sockaddr_in *)&ifr.ifr_addr)->sin_addr));
+
+    return std::string(ip);
+}
