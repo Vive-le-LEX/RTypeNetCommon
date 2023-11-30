@@ -20,14 +20,14 @@ namespace RType {
     namespace net {
         template <typename T>
         class server_interface {
-           public:
+           protected:
             /*
                 @brief Construct the server interface
                 @param port The port to listen on
             */
             server_interface(uint16_t port) : asioAcceptor(asioContext, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port)) {
 
-                std::cout << "[SERVER] Listening on: " << getIp() << ":" << port << "\n";
+                std::cout << "[SERVER] Listening on: " << getIp() << ":" << port << std::endl;
 
             }
 
@@ -166,26 +166,21 @@ namespace RType {
                 @param client The client that connected
                 @return True if the connection is accepted, false otherwise
             */
-            virtual bool OnClientConnect(std::shared_ptr<connection<T>> client) {
-                return false;
-            }
+            virtual bool OnClientConnect(std::shared_ptr<connection<T>> client) = 0;
 
             /*
                 @brief Called when a client disconnects
                 @param client The client that disconnected
             */
-            virtual void OnClientDisconnect(std::shared_ptr<connection<T>> client) {
-            }
+            virtual void OnClientDisconnect(std::shared_ptr<connection<T>> client) = 0;
 
             /*
                 @brief Called when a message arrives
                 @param client The client that sent the message
                 @param msg The message that was sent
             */
-            virtual void OnMessage(std::shared_ptr<connection<T>> client, message<T>& msg) {
-            }
+            virtual void OnMessage(std::shared_ptr<connection<T>> client, message<T>& msg) = 0;
 
-           protected:
             tsqueue<owned_message<T>> incomingMessages;
 
             std::deque<std::shared_ptr<connection<T>>> activeConnections;
