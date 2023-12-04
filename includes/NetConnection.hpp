@@ -48,7 +48,7 @@ namespace RType {
                 @param socket Socket connection
                 @param qIn Reference to incoming message queue
             */
-            connection(owner parent, asio::io_context& asioContext, asio::ip::tcp::socket socket, tsqueue<owned_message<T>>& qIn)
+            connection(owner parent, asio::io_context& asioContext, asio::ip::tcp::socket socket, TsQueue<owned_message<T>>& qIn)
                 : asioContext(asioContext), socket(std::move(socket)), incomingMessages(qIn) {
                 ownerType = parent;
             }
