@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include "net_common.hpp"
+#include "NetCommon.hpp"
 
 namespace RType {
 

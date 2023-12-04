@@ -11,27 +11,27 @@
 
 #pragma once
 
-#include "net_common.hpp"
-#include "net_connection.hpp"
-#include "net_message.hpp"
-#include "net_tsqueue.hpp"
+#include "NetCommon.hpp"
+#include "NetConnection.hpp"
+#include "NetMessage.hpp"
+#include "NetTsqueue.hpp"
 
 namespace RType {
     namespace net {
         template <typename T>
-        class server_interface {
+        class ServerInterface {
            protected:
             /*
                 @brief Construct the server interface
                 @param port The port to listen on
             */
-            server_interface(uint16_t port) : asioAcceptor(asioContext, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port)) {
+            ServerInterface(uint16_t port) : asioAcceptor(asioContext, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port)) {
 
                 std::cout << "[SERVER] Listening on: " << getIp() << ":" << port << std::endl;
 
             }
 
-            virtual ~server_interface() {
+            virtual ~ServerInterface() {
                 Stop();
             }
 
@@ -181,7 +181,7 @@ namespace RType {
             */
             virtual void OnMessage(std::shared_ptr<connection<T>> client, message<T>& msg) = 0;
 
-            tsqueue<owned_message<T>> incomingMessages;
+            TsQueue<owned_message<T>> incomingMessages;
 
             std::deque<std::shared_ptr<connection<T>>> activeConnections;
 

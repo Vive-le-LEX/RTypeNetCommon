@@ -11,17 +11,17 @@
 
 #pragma once
 
-#include "net_common.hpp"
+#include "NetCommon.hpp"
 
 namespace RType {
 
     namespace net {
         template <typename T>
-        class tsqueue {
+        class TsQueue {
            public:
-            tsqueue() = default;
-            tsqueue(const tsqueue<T>&) = delete;
-            virtual ~tsqueue() { clear(); }
+            TsQueue() = default;
+            TsQueue(const TsQueue<T>&) = delete;
+            virtual ~TsQueue() { clear(); }
 
            public:
             // Returns and maintains item at front of Queue

@@ -10,18 +10,18 @@
  */
 
 #pragma once
-#include "net_common.hpp"
-#include "net_connection.hpp"
-#include "net_message.hpp"
-#include "net_tsqueue.hpp"
+#include "NetCommon.hpp"
+#include "NetConnection.hpp"
+#include "NetMessage.hpp"
+#include "NetTsqueue.hpp"
 
 namespace RType {
     namespace net {
         template <typename T>
-        class client_interface {
-            client_interface() {}
+        class ClientInterface {
+            ClientInterface() {}
 
-            virtual ~client_interface() {
+            virtual ~ClientInterface() {
                 Disconnect();
             }
 
@@ -87,7 +87,7 @@ namespace RType {
                 @brief Retrieve the queue of messages from the server
                 @return The queue of messages from the server
             */
-            tsqueue<owned_message<T>>& Incoming() {
+            TsQueue<owned_message<T>>& Incoming() {
                 return incomingMessages;
             }
 
@@ -98,7 +98,7 @@ namespace RType {
 
            private:
             // This is the thread safe queue of incoming messages from server
-            tsqueue<owned_message<T>> incomingMessages;
+            TsQueue<owned_message<T>> incomingMessages;
         };
     }  // namespace net
 }  // namespace olc

@@ -11,9 +11,9 @@
 
 #pragma once
 
-#include "net_client.hpp"
-#include "net_common.hpp"
-#include "net_connection.hpp"
-#include "net_message.hpp"
-#include "net_server.hpp"
-#include "net_tsqueue.hpp"
+#include "NetClient.hpp"
+#include "NetCommon.hpp"
+#include "NetConnection.hpp"
+#include "NetMessage.hpp"
+#include "NetServer.hpp"
+#include "NetTsqueue.hpp"

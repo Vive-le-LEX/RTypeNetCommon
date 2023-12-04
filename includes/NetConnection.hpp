@@ -11,9 +11,9 @@
 
 #pragma once
 
-#include "net_common.hpp"
-#include "net_message.hpp"
-#include "net_tsqueue.hpp"
+#include "NetCommon.hpp"
+#include "NetMessage.hpp"
+#include "NetTsqueue.hpp"
 namespace RType {
     namespace net {
         /*
@@ -236,12 +236,12 @@ namespace RType {
             /*
                 @brief Queue of outgoing messages
             */
-            tsqueue<message<T>> outgoingMessages;
+            TsQueue<message<T>> outgoingMessages;
 
             /*
                 @brief Reference to incoming message queue
             */
-            tsqueue<owned_message<T>>& incomingMessages;
+            TsQueue<owned_message<T>>& incomingMessages;
 
             /*
                 @brief Temporary message
