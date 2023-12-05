@@ -72,13 +72,13 @@ namespace RType {
             */
             void WaitForClientConnection() {
                 asioAcceptor.async_accept(
-                    [this](std::error_code ec, asio::ip::tcp::socket socket) {
+                    [this](std::error_code ec, asio::ip::tcp::socket _socket) {
                         if (!ec) {
-                            std::cout << "[SERVER] New Connection: " << socket.remote_endpoint() << "\n";
+                            std::cout << "[SERVER] New Connection: " << _socket.remote_endpoint() << "\n";
 
                             std::shared_ptr<connection<T>> newconn =
                                 std::make_shared<connection<T>>(connection<T>::owner::server,
-                                                                asioContext, std::move(socket), incomingMessages);
+                                                                asioContext, std::move(_socket), incomingMessages);
 
                             if (OnClientConnect(newconn)) {
                                 activeConnections.push_back(std::move(newconn));

@@ -48,8 +48,8 @@ namespace RType {
                 @param socket Socket connection
                 @param qIn Reference to incoming message queue
             */
-            connection(owner parent, asio::io_context& asioContext, asio::ip::tcp::socket socket, TsQueue<owned_message<T>>& qIn)
-                : asioContext(asioContext), socket(std::move(socket)), incomingMessages(qIn) {
+            connection(owner parent, asio::io_context& asioContext, asio::ip::tcp::socket incomingSocket, TsQueue<owned_message<T>>& qIn)
+                : asioContext(asioContext), _socket(std::move(incomingSocket)), incomingMessages(qIn) {
                 ownerType = parent;
             }
 
@@ -69,7 +69,7 @@ namespace RType {
             */
             void ConnectToClient(uint32_t uid = 0) {
                 if (ownerType == owner::server) {
-                    if (socket.is_open()) {
+                    if (_socket.is_open()) {
                         id = uid;
                         ReadHeader();
                     }
@@ -82,7 +82,7 @@ namespace RType {
             */
             void ConnectToServer(const asio::ip::tcp::resolver::results_type& endpoints) {
                 if (ownerType == owner::client) {
-                    asio::async_connect(socket, endpoints, [this](std::error_code ec, asio::ip::tcp::endpoint endpoint) {
+                    asio::async_connect(_socket, endpoints, [this](std::error_code ec, asio::ip::tcp::endpoint endpoint) {
                         if (!ec) {
                             ReadHeader();
                         }
@@ -95,7 +95,7 @@ namespace RType {
             */
             void Disconnect() {
                 if (IsConnected())
-                    asio::post(asioContext, [this]() { socket.close(); });
+                    asio::post(asioContext, [this]() { _socket.close(); });
             }
 
             /*
@@ -103,7 +103,7 @@ namespace RType {
                 @return true if this connection is still active, false otherwise
             */
             bool IsConnected() const {
-                return socket.is_open();
+                return _socket.is_open();
             }
 
             /*
@@ -133,7 +133,7 @@ namespace RType {
                 @brief Write a message header, this function is Asynchronous
             */
             void WriteHeader() {
-                asio::async_write(socket, asio::buffer(&outgoingMessages.front().header, sizeof(message_header<T>)),
+                asio::async_write(_socket, asio::buffer(&outgoingMessages.front().header, sizeof(message_header<T>)),
                                   [this](std::error_code ec, std::size_t length) {
                                       if (!ec) {
                                           if (outgoingMessages.front().body.size() > 0) {
@@ -147,7 +147,7 @@ namespace RType {
                                           }
                                       } else {
                                           std::cout << "[" << id << "] Write Header Fail.\n";
-                                          socket.close();
+                                          _socket.close();
                                       }
                                   });
             }
@@ -156,7 +156,7 @@ namespace RType {
                 @brief Write a message body, this function is Asynchronous
             */
             void WriteBody() {
-                asio::async_write(socket, asio::buffer(outgoingMessages.front().body.data(), outgoingMessages.front().body.size()),
+                asio::async_write(_socket, asio::buffer(outgoingMessages.front().body.data(), outgoingMessages.front().body.size()),
                                   [this](std::error_code ec, std::size_t length) {
                                       if (!ec) {
                                           outgoingMessages.pop_front();
@@ -166,7 +166,7 @@ namespace RType {
                                           }
                                       } else {
                                           std::cout << "[" << id << "] Write Body Fail.\n";
-                                          socket.close();
+                                          _socket.close();
                                       }
                                   });
             }
@@ -177,7 +177,7 @@ namespace RType {
                 enough bytes to form a header of a message.
             */
             void ReadHeader() {
-                asio::async_read(socket, asio::buffer(&tempIncomingMessage.header, sizeof(message_header<T>)),
+                asio::async_read(_socket, asio::buffer(&tempIncomingMessage.header, sizeof(message_header<T>)),
                                  [this](std::error_code ec, std::size_t length) {
                                      if (!ec) {
                                          if (tempIncomingMessage.header.size > 0) {
@@ -188,7 +188,7 @@ namespace RType {
                                          }
                                      } else {
                                          std::cout << "[" << id << "] Read Header Fail.\n";
-                                         socket.close();
+                                         _socket.close();
                                      }
                                  });
             }
@@ -199,13 +199,13 @@ namespace RType {
                 request we read a body, of the specified size, into the message buffer.
             */
             void ReadBody() {
-                asio::async_read(socket, asio::buffer(tempIncomingMessage.body.data(), tempIncomingMessage.body.size()),
+                asio::async_read(_socket, asio::buffer(tempIncomingMessage.body.data(), tempIncomingMessage.body.size()),
                                  [this](std::error_code ec, std::size_t length) {
                                      if (!ec) {
                                          AddToIncomingMessageQueue();
                                      } else {
                                          std::cout << "[" << id << "] Read Body Fail.\n";
-                                         socket.close();
+                                         _socket.close();
                                      }
                                  });
             }
@@ -226,7 +226,7 @@ namespace RType {
             /*
                 @brief Socket to the remote
             */
-            asio::ip::tcp::socket socket;
+            asio::ip::tcp::socket _socket;
 
             /*
                 @brief Reference to ASIO context object this connection is attached to
