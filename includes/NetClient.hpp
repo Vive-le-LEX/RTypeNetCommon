@@ -19,6 +19,7 @@ namespace RType {
     namespace net {
         template <typename T>
         class ClientInterface {
+           public:
             ClientInterface() {}
 
             virtual ~ClientInterface() {
@@ -101,4 +102,4 @@ namespace RType {
             TsQueue<owned_message<T>> incomingMessages;
         };
     }  // namespace net
-}  // namespace olc
+}  // namespace RType

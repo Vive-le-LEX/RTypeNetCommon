@@ -20,7 +20,7 @@ namespace RType {
     namespace net {
         template <typename T>
         class ServerInterface {
-           protected:
+           public:
             /*
                 @brief Construct the server interface
                 @param port The port to listen on
