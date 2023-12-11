@@ -13,8 +13,8 @@
 
 #include "NetCommon.hpp"
 #include "NetMessage.hpp"
-#include "NetTsqueue.hpp"
 #include "NetServer.hpp"
+#include "NetTsqueue.hpp"
 namespace RType {
     namespace net {
         /*
@@ -78,7 +78,7 @@ namespace RType {
                 @brief Connect to a client
                 @param uid ID of the client
             */
-            void ConnectToClient(RType::net::ServerInterface<T> *server, uint32_t uid = 0) {
+            void ConnectToClient(RType::net::ServerInterface<T>* server, uint32_t uid = 0) {
                 if (ownerType == owner::server) {
                     if (_socket.is_open()) {
                         id = uid;
@@ -98,10 +98,7 @@ namespace RType {
                 if (ownerType == owner::client) {
                     asio::async_connect(_socket, endpoints, [this](std::error_code ec, asio::ip::tcp::endpoint endpoint) {
                         if (!ec) {
-                            ReadHeader();
-                        } else {
-                            std::cout << "[" << id << "] Connection Failed.\n";
-                            _socket.close();
+                            ReadValidation();
                         }
                     });
                 }
