@@ -22,6 +22,10 @@
 #include <thread>
 #include <vector>
 
+#include <string.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+
 #ifdef _WIN32
 #define _WIN32_WINNT 0x0A00
 #elif __linux__
@@ -36,21 +40,20 @@
 #include <asio/ts/buffer.hpp>
 #include <asio/ts/internet.hpp>
 
-
 //----------------------------------------------------------------
 // Utilities
 //----------------------------------------------------------------
 
 inline std::string getIp(void) {
-    int fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+  int fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
 
-    struct ifreq ifr {};
-    strcpy(ifr.ifr_name, "wlo1");
-    ioctl(fd, SIOCGIFADDR, &ifr);
-    close(fd);
+  struct ifreq ifr {};
+  strcpy(ifr.ifr_name, "wlo1");
+  ioctl(fd, SIOCGIFADDR, &ifr);
+  close(fd);
 
-    char ip[INET_ADDRSTRLEN];
-    strcpy(ip, inet_ntoa(((sockaddr_in *)&ifr.ifr_addr)->sin_addr));
+  char ip[INET_ADDRSTRLEN];
+  strcpy(ip, inet_ntoa(((sockaddr_in *)&ifr.ifr_addr)->sin_addr));
 
-    return std::string(ip);
+  return std::string(ip);
 }
