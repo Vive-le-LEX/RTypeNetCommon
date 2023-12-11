@@ -26,9 +26,7 @@ namespace RType {
                 @param port The port to listen on
             */
             explicit ServerInterface(uint16_t port) : asioAcceptor(asioContext, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port)) {
-
                 std::cout << "[SERVER] Listening on: " << getIp() << ":" << port << std::endl;
-
             }
 
             virtual ~ServerInterface() {
@@ -160,7 +158,6 @@ namespace RType {
             }
 
            protected:
-
             /*
                 @brief Called when a client connects
                 @param client The client that connected
@@ -180,6 +177,10 @@ namespace RType {
                 @param msg The message that was sent
             */
             virtual void OnMessage(std::shared_ptr<connection<T>> client, message<T>& msg) = 0;
+
+           public:
+            virtual void OnClientValidated(std::shared_ptr<connection<T>> client) {
+            }
 
             TsQueue<owned_message<T>> incomingMessages;
 
