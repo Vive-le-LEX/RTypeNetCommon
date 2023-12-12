@@ -60,7 +60,7 @@ inline std::string getIp(void) {
     return ip;
 }
 
-class AsyncTimer : Singleton<AsyncTimer> {
+class AsyncTimer : public Singleton<AsyncTimer> {
    public:
     void addTimer(uint32_t id, uint32_t ms, std::function<void()> callback) {
         _callbacks[id] = std::move(callback);
