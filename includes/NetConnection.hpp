@@ -245,38 +245,40 @@ namespace RType {
             }
 
             void ReadValidation(RType::net::ServerInterface<T>* server = nullptr) {
-                asio::async_read(_socket, asio::buffer(&handshakeIn, sizeof(uint64_t)),
-                                 [this, server](std::error_code ec, std::size_t length) {
-                                     if (!ec) {
-                                         if (ownerType == owner::server) {
-                                             // Connection is a server, so check response from client
+                readWithTimeout(_socket, asio::buffer(&handshakeIn, sizeof(uint64_t)), 5);
+                exit(0);
+                // asio::async_read(_socket, asio::buffer(&handshakeIn, sizeof(uint64_t)),
+                //                  [this, server](std::error_code ec, std::size_t length) {
+                //                      if (!ec) {
+                //                          if (ownerType == owner::server) {
+                //                              // Connection is a server, so check response from client
 
-                                             // Compare sent data to actual solution
-                                             if (handshakeIn == handshakeCheck) {
-                                                 // Client has provided valid solution, so allow it to connect properly
-                                                 std::cout << "Client Validated" << std::endl;
-                                                 server->OnClientValidated(this->shared_from_this());
+                //                              // Compare sent data to actual solution
+                //                              if (handshakeIn == handshakeCheck) {
+                //                                  // Client has provided valid solution, so allow it to connect properly
+                //                                  std::cout << "Client Validated" << std::endl;
+                //                                  server->OnClientValidated(this->shared_from_this());
 
-                                                 // Sit waiting to receive data now
-                                                 ReadHeader();
-                                             } else {
-                                                 // Client gave incorrect data, so disconnect
-                                                 std::cout << "Client Disconnected (Fail Validation)" << std::endl;
-                                                 _socket.close();
-                                             }
-                                         } else {
-                                             // Connection is a client, so solve puzzle
-                                             handshakeOut = scramble(handshakeIn);
+                //                                  // Sit waiting to receive data now
+                //                                  ReadHeader();
+                //                              } else {
+                //                                  // Client gave incorrect data, so disconnect
+                //                                  std::cout << "Client Disconnected (Fail Validation)" << std::endl;
+                //                                  _socket.close();
+                //                              }
+                //                          } else {
+                //                              // Connection is a client, so solve puzzle
+                //                              handshakeOut = scramble(handshakeIn);
 
-                                             // Write the result
-                                             WriteValidation();
-                                         }
-                                     } else {
-                                         // Some bigger failure occurred
-                                         std::cout << "Client Disconnected (ReadValidation)" << std::endl;
-                                         _socket.close();
-                                     }
-                                 });
+                //                              // Write the result
+                //                              WriteValidation();
+                //                          }
+                //                      } else {
+                //                          // Some bigger failure occurred
+                //                          std::cout << "Client Disconnected (ReadValidation)" << std::endl;
+                //                          _socket.close();
+                //                      }
+                //                  });
             }
 
             /*
