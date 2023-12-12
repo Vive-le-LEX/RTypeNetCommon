@@ -244,19 +244,19 @@ namespace RType {
                                   });
             }
 
-            void ReadValidation(RType::net::ServerInterface<T>* server = nullptr, uint32_t id) {
-                AsyncTimer::GetInstance().addTimer(id, 5000, [this, server]() {
+            void ReadValidation(RType::net::ServerInterface<T>* server = nullptr) {
+                AsyncTimer::GetInstance()->addTimer(id, 5000, [this, server]() {
                     std::cout << "Client Disconnected (ReadValidation)" << std::endl;
                 });
                 asio::async_read(_socket, asio::buffer(&handshakeIn, sizeof(uint64_t)),
-                                 [this, server, id](std::error_code ec, std::size_t length) {
+                                 [this, server](std::error_code ec, std::size_t length) {
                                      if (!ec) {
                                          if (ownerType == owner::server) {
                                              // Connection is a server, so check response from client
 
                                              // Compare sent data to actual solution
                                              if (handshakeIn == handshakeCheck) {
-                                                AsyncTimer::GetInstance().removeTimer(id);
+                                                AsyncTimer::GetInstance()->removeTimer(id);
                                                  // Client has provided valid solution, so allow it to connect properly
                                                  std::cout << "Client Validated" << std::endl;
                                                  server->OnClientValidated(this->shared_from_this());
