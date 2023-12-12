@@ -25,6 +25,8 @@
 #include <optional>
 #include <thread>
 #include <vector>
+#include <functional>
+#include <unordered_map>
 
 #include "Singleton.hpp"
 
@@ -72,7 +74,8 @@ class AsyncTimer : public Singleton<AsyncTimer> {
     }
 
     void removeTimer(uint32_t id) {
-        _callbacks.erase(id);
+        if (_callbacks.find(id) != _callbacks.end())
+            _callbacks.erase(id);
     }
    private:
     AsyncTimer() = default;
