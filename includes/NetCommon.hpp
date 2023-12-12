@@ -11,13 +11,13 @@
 
 #pragma once
 
-#include <string.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
+#include <cstring>
 #include <deque>
 #include <iostream>
 #include <memory>
@@ -25,6 +25,8 @@
 #include <optional>
 #include <thread>
 #include <vector>
+
+#include "Singleton.hpp"
 
 #ifdef _WIN32
 #define _WIN32_WINNT 0x0A00
@@ -55,33 +57,26 @@ inline std::string getIp(void) {
     char ip[INET_ADDRSTRLEN];
     strcpy(ip, inet_ntoa(((sockaddr_in*)&ifr.ifr_addr)->sin_addr));
 
-    return std::string(ip);
+    return ip;
 }
 
-template <typename SyncReadStream, typename MutableBufferSequence>
-inline void readWithTimeout(SyncReadStream& s, const MutableBufferSequence& buffers, std::chrono::seconds& timeoutDuration = 1) {
-    asio::steady_timer timer(s.get_io_service());
+class AsyncTimer : Singleton<AsyncTimer> {
+   public:
+    void addTimer(uint32_t id, uint32_t ms, std::function<void()> callback) {
+        _callbacks[id] = std::move(callback);
+        std::thread([this, id, ms]() {
+            std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+            _callbacks[id]();
+            _callbacks.erase(id);
+        }).detach();
+    }
 
-    timer.expires_from_now(timeoutDuration);
-    timer.async_wait([&](const std::error_code& ec) {
-        if (!ec) {
-            // Handle timeout here
-            std::cout << "Timeout occurred!" << std::endl;
-            // You may want to close the socket or perform other actions
-        }
-    });
+    void removeTimer(uint32_t id) {
+        _callbacks.erase(id);
+    }
+   private:
+    AsyncTimer() = default;
+    friend class Singleton<AsyncTimer>;
 
-    asio::async_read(s, buffers, asio::transfer_at_least(1),
-                            [&](const std::error_code& ec, std::size_t bytes_transferred) {
-                                // Cancel the timer as the read operation completed before timeout
-                                timer.cancel();
-
-                                if (!ec) {
-                                    // Handle read completion here
-                                    std::cout << "Read completed, received " << bytes_transferred << " bytes." << std::endl;
-                                } else {
-                                    // Handle read error here
-                                    std::cout << "Read error: " << ec.message() << std::endl;
-                                }
-                            });
-}
+    std::unordered_map<uint32_t, std::function<void()> > _callbacks;
+};
