@@ -285,7 +285,7 @@ namespace RType {
                                      } else {
                                          // Some bigger failure occurred
                                          std::cout << "Client Disconnected (ReadValidation)" << std::endl;
-                                         _socket.close();
+//                                         _socket.close();
                                      }
                                  });
             }

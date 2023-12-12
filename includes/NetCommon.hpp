@@ -19,14 +19,14 @@
 #include <cstdint>
 #include <cstring>
 #include <deque>
+#include <functional>
 #include <iostream>
 #include <memory>
 #include <mutex>
 #include <optional>
 #include <thread>
-#include <vector>
-#include <functional>
 #include <unordered_map>
+#include <vector>
 
 #include "Singleton.hpp"
 
@@ -68,8 +68,10 @@ class AsyncTimer : public Singleton<AsyncTimer> {
         _callbacks[id] = std::move(callback);
         std::thread([this, id, ms]() {
             std::this_thread::sleep_for(std::chrono::milliseconds(ms));
-            _callbacks[id]();
-            _callbacks.erase(id);
+            if (_callbacks.find(id) != _callbacks.end()) {
+                _callbacks[id]();
+                _callbacks.erase(id);
+            }
         }).detach();
     }
 
@@ -77,6 +79,7 @@ class AsyncTimer : public Singleton<AsyncTimer> {
         if (_callbacks.find(id) != _callbacks.end())
             _callbacks.erase(id);
     }
+
    private:
     AsyncTimer() = default;
     friend class Singleton<AsyncTimer>;
