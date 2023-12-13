@@ -53,7 +53,7 @@ namespace RType {
                 @brief Disconnect from the server
             */
             void Disconnect() {
-                if (this->IsConnected()) {
+                if (IsConnected()) {
                     currentConnection->Disconnect();
                 }
 
