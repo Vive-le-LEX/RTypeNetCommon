@@ -102,6 +102,9 @@ namespace RType {
                                         [this](std::error_code ec, asio::ip::tcp::endpoint endpoint) {
                                             if (!ec) {
                                                 ReadValidation();
+                                            } else {
+                                                std::cout << "Failed to connect to server" << std::endl;
+                                                _socket.close();
                                             }
                                         });
                 }

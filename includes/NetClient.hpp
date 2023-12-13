@@ -80,7 +80,7 @@ namespace RType {
                 @param msg The message to send
             */
             void Send(const message<T>& msg) {
-                if (this->IsConnected())
+                if (IsConnected())
                     currentConnection->Send(msg);
             }
 
