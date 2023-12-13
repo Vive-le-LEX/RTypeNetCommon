@@ -32,7 +32,7 @@ namespace RType {
         /*
             @struct message
             @brief Message Body contains a header and a std::vector, containing raw bytes
-            of infomation. This way the message can be variable length, but the size
+            of information. This way the message can be variable length, but the size
             in the header must be updated.
 
             @tparam T Message type
@@ -45,7 +45,7 @@ namespace RType {
             /*
                 @brief Returns size of entire message packet in bytes
             */
-            size_t size() const {
+            [[nodiscard]] size_t size() const {
                 return body.size();
             }
 
@@ -118,8 +118,8 @@ namespace RType {
             std::shared_ptr<connection<T>> remote = nullptr;
             message<T> msg;
 
-            friend std::ostream& operator<<(std::ostream& os, const owned_message<T>& msg) {
-                os << msg.msg;
+            friend std::ostream& operator<<(std::ostream& os, const owned_message<T>& message) {
+                os << message.msg;
                 return os;
             }
         };

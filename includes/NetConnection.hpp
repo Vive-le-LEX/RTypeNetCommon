@@ -13,7 +13,9 @@
 
 #include "NetCommon.hpp"
 #include "NetMessage.hpp"
+#include "NetServer.hpp"
 #include "NetTsqueue.hpp"
+
 namespace RType {
     namespace net {
         /*
@@ -48,18 +50,29 @@ namespace RType {
                 @param socket Socket connection
                 @param qIn Reference to incoming message queue
             */
-            connection(owner parent, asio::io_context& asioContext, asio::ip::tcp::socket incomingSocket, TsQueue<owned_message<T>>& qIn)
+            connection(owner parent, asio::io_context &asioContext, asio::ip::tcp::socket incomingSocket,
+                       TsQueue<owned_message<T>> &qIn)
                 : asioContext(asioContext), _socket(std::move(incomingSocket)), incomingMessages(qIn) {
                 ownerType = parent;
+                AsyncTimer::Construct();
+                if (ownerType == owner::server) {
+                    handshakeOut = uint64_t(std::chrono::system_clock::now().time_since_epoch().count());
+
+                    handshakeCheck = scramble(handshakeOut);
+                } else {
+                    // Connection is Client -> Server, so we have nothing to define,
+                    handshakeIn = 0;
+                    handshakeOut = 0;
+                }
             }
 
-            virtual ~connection() {}
+            virtual ~connection() = default;
 
             /*
                 @brief Get the ID of this connection
                 @return uint32_t ID of this connection
             */
-            uint32_t GetID() const {
+            [[nodiscard]] uint32_t GetID() const {
                 return id;
             }
 
@@ -67,11 +80,14 @@ namespace RType {
                 @brief Connect to a client
                 @param uid ID of the client
             */
-            void ConnectToClient(uint32_t uid = 0) {
+            void ConnectToClient(RType::net::ServerInterface<T> *server, uint32_t uid = 0) {
                 if (ownerType == owner::server) {
                     if (_socket.is_open()) {
                         id = uid;
-                        ReadHeader();
+
+                        WriteValidation();
+
+                        ReadValidation(server);
                     }
                 }
             }
@@ -80,13 +96,14 @@ namespace RType {
                 @brief Connect to a server
                 @param endpoints Endpoints of the server
             */
-            void ConnectToServer(const asio::ip::tcp::resolver::results_type& endpoints) {
+            void ConnectToServer(const asio::ip::tcp::resolver::results_type &endpoints) {
                 if (ownerType == owner::client) {
-                    asio::async_connect(_socket, endpoints, [this](std::error_code ec, asio::ip::tcp::endpoint endpoint) {
-                        if (!ec) {
-                            ReadHeader();
-                        }
-                    });
+                    asio::async_connect(_socket, endpoints,
+                                        [this](std::error_code ec, asio::ip::tcp::endpoint endpoint) {
+                                            if (!ec) {
+                                                ReadValidation();
+                                            }
+                                        });
                 }
             }
 
@@ -102,7 +119,7 @@ namespace RType {
                 @brief Check if this connection is still active
                 @return true if this connection is still active, false otherwise
             */
-            bool IsConnected() const {
+            [[nodiscard]] bool IsConnected() const {
                 return _socket.is_open();
             }
 
@@ -117,7 +134,7 @@ namespace RType {
                 the owner type
                 @param msg Message to send
             */
-            void Send(const message<T>& msg) {
+            void Send(const message<T> &msg) {
                 asio::post(asioContext,
                            [this, msg]() {
                                bool writingMessage = !outgoingMessages.empty();
@@ -199,13 +216,76 @@ namespace RType {
                 request we read a body, of the specified size, into the message buffer.
             */
             void ReadBody() {
-                asio::async_read(_socket, asio::buffer(tempIncomingMessage.body.data(), tempIncomingMessage.body.size()),
+                asio::async_read(_socket,
+                                 asio::buffer(tempIncomingMessage.body.data(), tempIncomingMessage.body.size()),
                                  [this](std::error_code ec, std::size_t length) {
                                      if (!ec) {
                                          AddToIncomingMessageQueue();
                                      } else {
                                          std::cout << "[" << id << "] Read Body Fail.\n";
                                          _socket.close();
+                                     }
+                                 });
+            }
+
+            uint64_t scramble(uint64_t input) {
+                uint64_t out = input ^ 0xDEADBEEFC0DECAFE;
+                out = (out & 0xF0F0F0F0F0F0F0) >> 4 | (out & 0x0F0F0F0F0F0F0F) << 4;
+                return out ^ 0xC0DEFACE12345678;
+            }
+
+            void WriteValidation() {
+                asio::async_write(_socket, asio::buffer(&handshakeOut, sizeof(uint64_t)),
+                                  [this](std::error_code ec, std::size_t length) {
+                                      if (!ec) {
+                                          // Validation data sent, clients should sit and wait
+                                          // for a response (or a closure)
+                                          if (ownerType == owner::client)
+                                              ReadHeader();
+                                      } else {
+                                          _socket.close();
+                                      }
+                                  });
+            }
+
+            void ReadValidation(RType::net::ServerInterface<T> *server = nullptr) {
+                if (ownerType == owner::server) {
+                    AsyncTimer::GetInstance()->addTimer(id, 1000, [this, server]() {
+                        std::cout << "Client Timed out while reading validation" << std::endl;
+                        _socket.close();
+                    });
+                }
+                asio::async_read(_socket, asio::buffer(&handshakeIn, sizeof(uint64_t)),
+                                 [this, server](std::error_code ec, std::size_t length) {
+                                     if (!ec) {
+                                         if (ownerType == owner::server) {
+                                             // Connection is a server, so check response from client
+
+                                             // Compare sent data to actual solution
+                                             if (handshakeIn == handshakeCheck) {
+                                                 AsyncTimer::GetInstance()->removeTimer(id);
+                                                 // Client has provided valid solution, so allow it to connect properly
+                                                 std::cout << "Client Validated" << std::endl;
+                                                 server->OnClientValidated(this->shared_from_this());
+
+                                                 // Sit waiting to receive data now
+                                                 ReadHeader();
+                                             } else {
+                                                 // Client gave incorrect data, so disconnect
+                                                 std::cout << "Client Disconnected (Fail Validation)" << std::endl;
+                                                 _socket.close();
+                                             }
+                                         } else {
+                                             // Connection is a client, so solve puzzle
+                                             handshakeOut = scramble(handshakeIn);
+
+                                             // Write the result
+                                             WriteValidation();
+                                         }
+                                     } else {
+                                         // Some bigger failure occurred
+                                         std::cout << "Client Disconnected (ReadValidation)" << std::endl;
+//                                         _socket.close();
                                      }
                                  });
             }
@@ -218,7 +298,6 @@ namespace RType {
                     incomingMessages.push_back({this->shared_from_this(), tempIncomingMessage});
                 else
                     incomingMessages.push_back({nullptr, tempIncomingMessage});
-
                 ReadHeader();
             }
 
@@ -231,7 +310,7 @@ namespace RType {
             /*
                 @brief Reference to ASIO context object this connection is attached to
             */
-            asio::io_context& asioContext;
+            asio::io_context &asioContext;
 
             /*
                 @brief Queue of outgoing messages
@@ -241,7 +320,7 @@ namespace RType {
             /*
                 @brief Reference to incoming message queue
             */
-            TsQueue<owned_message<T>>& incomingMessages;
+            TsQueue<owned_message<T>> &incomingMessages;
 
             /*
                 @brief Temporary message
@@ -252,6 +331,13 @@ namespace RType {
                 @brief Owner type
             */
             owner ownerType = owner::server;
+
+            uint64_t handshakeOut = 0;
+            uint64_t handshakeIn = 0;
+            uint64_t handshakeCheck = 0;
+
+            bool validHandshake = false;
+            bool connectionEstablished = false;
 
             uint32_t id = 0;
         };

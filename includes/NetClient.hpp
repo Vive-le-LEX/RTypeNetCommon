@@ -20,7 +20,7 @@ namespace RType {
         template <typename T>
         class ClientInterface {
            public:
-            ClientInterface() {}
+            ClientInterface() = default;
 
             virtual ~ClientInterface() {
                 Disconnect();
@@ -80,7 +80,7 @@ namespace RType {
                 @param msg The message to send
             */
             void Send(const message<T>& msg) {
-                if (IsConnected())
+                if (this->IsConnected())
                     currentConnection->Send(msg);
             }
 

@@ -2,13 +2,15 @@
   "configurations": [
     {
       "name": "Linux",
-      "includePath": ["${workspaceFolder}/**", "${workspaceFolder}/includes"],
+      "includePath": [
+        "${workspaceFolder}/**",
+        "/usr/include/**",
+        "${workspaceFolder}/build/_deps/asio-src/asio/include/**"
+      ],
       "defines": [],
-      "compilerPath": "/usr/lib64/ccache/gcc",
       "cStandard": "c17",
-      "cppStandard": "gnu++17",
-      "intelliSenseMode": "linux-clang-x64",
-      "configurationProvider": "ms-vscode.cmake-tools"
+      "cppStandard": "c++17",
+      "intelliSenseMode": "linux-clang-x64"
     }
   ],
   "version": 4

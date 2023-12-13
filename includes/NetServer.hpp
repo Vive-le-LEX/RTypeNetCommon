@@ -25,10 +25,8 @@ namespace RType {
                 @brief Construct the server interface
                 @param port The port to listen on
             */
-            ServerInterface(uint16_t port) : asioAcceptor(asioContext, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port)) {
-
+            explicit ServerInterface(uint16_t port) : asioAcceptor(asioContext, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port)) {
                 std::cout << "[SERVER] Listening on: " << getIp() << ":" << port << std::endl;
-
             }
 
             virtual ~ServerInterface() {
@@ -76,14 +74,14 @@ namespace RType {
                         if (!ec) {
                             std::cout << "[SERVER] New Connection: " << _socket.remote_endpoint() << "\n";
 
-                            std::shared_ptr<connection<T>> newconn =
+                            std::shared_ptr<connection<T>> newConnection =
                                 std::make_shared<connection<T>>(connection<T>::owner::server,
                                                                 asioContext, std::move(_socket), incomingMessages);
 
-                            if (OnClientConnect(newconn)) {
-                                activeConnections.push_back(std::move(newconn));
+                            if (OnClientConnect(newConnection)) {
+                                activeConnections.push_back(std::move(newConnection));
 
-                                activeConnections.back()->ConnectToClient(nIDCounter++);
+                                activeConnections.back()->ConnectToClient(this, nIDCounter++);
 
                                 std::cout << "[" << activeConnections.back()->GetID() << "] Connection Approved\n";
                             } else {
@@ -144,7 +142,7 @@ namespace RType {
             /*
                 @brief Force update the server
                 @param maxMessages The maximum number of messages to process
-                @param wait Whether or not to wait for a message
+                @param wait Whether to wait for a message
             */
             void Update(size_t maxMessages = -1, bool wait = false) {
                 if (wait) incomingMessages.wait();
@@ -160,7 +158,6 @@ namespace RType {
             }
 
            protected:
-
             /*
                 @brief Called when a client connects
                 @param client The client that connected
@@ -180,6 +177,10 @@ namespace RType {
                 @param msg The message that was sent
             */
             virtual void OnMessage(std::shared_ptr<connection<T>> client, message<T>& msg) = 0;
+
+           public:
+            virtual void OnClientValidated(std::shared_ptr<connection<T>> client) {
+            }
 
             TsQueue<owned_message<T>> incomingMessages;
 
