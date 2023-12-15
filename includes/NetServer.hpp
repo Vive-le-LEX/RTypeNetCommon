@@ -74,8 +74,8 @@ namespace RType {
                         if (!ec) {
                             std::cout << "[SERVER] New Connection: " << _socket.remote_endpoint() << "\n";
 
-                            std::shared_ptr<connection<T>> newConnection =
-                                std::make_shared<connection<T>>(connection<T>::owner::server,
+                            std::shared_ptr<TcpConnection<T>> newConnection =
+                                std::make_shared<TcpConnection<T>>(TcpConnection<T>::owner::server,
                                                                 asioContext, std::move(_socket), incomingMessages);
 
                             if (OnClientConnect(newConnection)) {
@@ -100,7 +100,7 @@ namespace RType {
                 @param client The client to send the message to
                 @param msg The message to send
             */
-            void MessageClient(std::shared_ptr<connection<T>> client, const message<T>& msg) {
+            void MessageClient(std::shared_ptr<TcpConnection<T>> client, const message<T>& msg) {
                 if (client && client->IsConnected()) {
                     client->Send(msg);
                 } else {
@@ -119,7 +119,7 @@ namespace RType {
                 @param msg The message to send
                 @param ignoreClient A client to ignore
             */
-            void MessageAllClients(const message<T>& msg, std::shared_ptr<connection<T>> ignoreClient = nullptr) {
+            void MessageAllClients(const message<T>& msg, std::shared_ptr<TcpConnection<T>> ignoreClient = nullptr) {
                 bool invalidClientExists = false;
 
                 for (auto& client : activeTcpConnections) {
@@ -163,23 +163,23 @@ namespace RType {
                 @param client The client that connected
                 @return True if the connection is accepted, false otherwise
             */
-            virtual bool OnClientConnect(std::shared_ptr<connection<T>> client) = 0;
+            virtual bool OnClientConnect(std::shared_ptr<TcpConnection<T>> client) = 0;
 
             /*
                 @brief Called when a client disconnects
                 @param client The client that disconnected
             */
-            virtual void OnClientDisconnect(std::shared_ptr<connection<T>> client) = 0;
+            virtual void OnClientDisconnect(std::shared_ptr<TcpConnection<T>> client) = 0;
 
             /*
                 @brief Called when a message arrives
                 @param client The client that sent the message
                 @param msg The message that was sent
             */
-            virtual void OnMessage(std::shared_ptr<connection<T>> client, message<T>& msg) = 0;
+            virtual void OnMessage(std::shared_ptr<TcpConnection<T>> client, message<T>& msg) = 0;
 
            public:
-            virtual void OnClientValidated(std::shared_ptr<connection<T>> client) = 0;
+            virtual void OnClientValidated(std::shared_ptr<TcpConnection<T>> client) = 0;
 
            protected:
             TsQueue<owned_message<T>> incomingMessages;
