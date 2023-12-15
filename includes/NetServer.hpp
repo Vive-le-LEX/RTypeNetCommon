@@ -12,8 +12,8 @@
 #pragma once
 
 #include "NetCommon.hpp"
-#include "NetConnection.hpp"
 #include "NetMessage.hpp"
+#include "NetTcpConnection.hpp"
 #include "NetTsqueue.hpp"
 
 namespace RType {
@@ -79,11 +79,11 @@ namespace RType {
                                                                 asioContext, std::move(_socket), incomingMessages);
 
                             if (OnClientConnect(newConnection)) {
-                                activeConnections.push_back(std::move(newConnection));
+                                activeTcpConnections.push_back(std::move(newConnection));
 
-                                activeConnections.back()->ConnectToClient(this, nIDCounter++);
+                                activeTcpConnections.back()->ConnectToClient(this, nIDCounter++);
 
-                                std::cout << "[" << activeConnections.back()->GetID() << "] Connection Approved\n";
+                                std::cout << "[" << activeTcpConnections.back()->GetID() << "] Connection Approved\n";
                             } else {
                                 std::cout << "[-----] Connection Denied\n";
                             }
@@ -109,8 +109,8 @@ namespace RType {
                     client.reset();
 
                     // Then physically remove it from the container
-                    activeConnections.erase(
-                        std::remove(activeConnections.begin(), activeConnections.end(), client), activeConnections.end());
+                    activeTcpConnections.erase(
+                            std::remove(activeTcpConnections.begin(), activeTcpConnections.end(), client), activeTcpConnections.end());
                 }
             }
 
@@ -122,7 +122,7 @@ namespace RType {
             void MessageAllClients(const message<T>& msg, std::shared_ptr<connection<T>> ignoreClient = nullptr) {
                 bool invalidClientExists = false;
 
-                for (auto& client : activeConnections) {
+                for (auto& client : activeTcpConnections) {
                     if (client && client->IsConnected()) {
                         if (client != ignoreClient)
                             client->Send(msg);
@@ -135,8 +135,8 @@ namespace RType {
                 }
 
                 if (invalidClientExists)
-                    activeConnections.erase(
-                        std::remove(activeConnections.begin(), activeConnections.end(), nullptr), activeConnections.end());
+                    activeTcpConnections.erase(
+                            std::remove(activeTcpConnections.begin(), activeTcpConnections.end(), nullptr), activeTcpConnections.end());
             }
 
             /*
@@ -179,12 +179,12 @@ namespace RType {
             virtual void OnMessage(std::shared_ptr<connection<T>> client, message<T>& msg) = 0;
 
            public:
-            virtual void OnClientValidated(std::shared_ptr<connection<T>> client) {
-            }
+            virtual void OnClientValidated(std::shared_ptr<connection<T>> client) = 0;
 
+           protected:
             TsQueue<owned_message<T>> incomingMessages;
 
-            std::deque<std::shared_ptr<connection<T>>> activeConnections;
+            std::deque<std::shared_ptr<TcpConnection<T>>> activeTcpConnections;
 
             asio::io_context asioContext;
             std::thread threadContext;

@@ -18,13 +18,16 @@
 
 namespace RType {
     namespace net {
+        template <typename T>
+        class ServerInterface;
+
+        enum class owner {
+            server,
+            client
+        };
         template <typename MessageType, typename SocketType>
         class AConnection : public std::enable_shared_from_this<AConnection<MessageType, SocketType>> {
            public:
-            enum class owner {
-                server,
-                client
-            };
 
             AConnection(owner parent,
                         asio::io_context& context,
@@ -47,7 +50,7 @@ namespace RType {
 
             virtual ~AConnection() = default;
 
-            [[nodiscard]] uint32_t GetID() const {
+            [[nodiscard]] uint32_t GetID() const final {
                 return id;
             }
 
@@ -65,7 +68,7 @@ namespace RType {
             /*
                 @brief Disconnect from server
             */
-            void Disconnect() {
+            void Disconnect() final {
                 if (IsConnected())
                     asio::post(asioContext, [this]() {
                         asioSocket.close();
@@ -83,7 +86,7 @@ namespace RType {
             /*
                 @brief Start listening for incoming messages
             */
-            void StartListening() {
+            void StartListening() final {
             }
 
             virtual void Send(const message<MessageType>& msg)  = 0;

@@ -99,7 +99,8 @@ namespace RType {
             void ConnectToServer(const asio::ip::tcp::resolver::results_type &endpoints) {
                 if (ownerType == owner::client) {
                     asio::async_connect(_socket, endpoints,
-                                        [this](std::error_code ec, asio::ip::tcp::endpoint endpoint) {
+                                        [this](std::error_code ec, asio::ip::tcp::endpoint &endpoint) {
+                                            (void)endpoint;
                                             if (!ec) {
                                                 ReadValidation();
                                             } else {
@@ -155,6 +156,7 @@ namespace RType {
             void WriteHeader() {
                 asio::async_write(_socket, asio::buffer(&outgoingMessages.front().header, sizeof(message_header<T>)),
                                   [this](std::error_code ec, std::size_t length) {
+                                      (void)length;
                                       if (!ec) {
                                           if (outgoingMessages.front().body.size() > 0) {
                                               WriteBody();
@@ -178,6 +180,7 @@ namespace RType {
             void WriteBody() {
                 asio::async_write(_socket, asio::buffer(outgoingMessages.front().body.data(), outgoingMessages.front().body.size()),
                                   [this](std::error_code ec, std::size_t length) {
+                                      (void)length;
                                       if (!ec) {
                                           outgoingMessages.pop_front();
 
@@ -199,6 +202,7 @@ namespace RType {
             void ReadHeader() {
                 asio::async_read(_socket, asio::buffer(&tempIncomingMessage.header, sizeof(message_header<T>)),
                                  [this](std::error_code ec, std::size_t length) {
+                                     (void)length;
                                      if (!ec) {
                                          if (tempIncomingMessage.header.size > 0) {
                                              tempIncomingMessage.body.resize(tempIncomingMessage.header.size);
@@ -222,6 +226,7 @@ namespace RType {
                 asio::async_read(_socket,
                                  asio::buffer(tempIncomingMessage.body.data(), tempIncomingMessage.body.size()),
                                  [this](std::error_code ec, std::size_t length) {
+                                     (void)length;
                                      if (!ec) {
                                          AddToIncomingMessageQueue();
                                      } else {
@@ -240,6 +245,7 @@ namespace RType {
             void WriteValidation() {
                 asio::async_write(_socket, asio::buffer(&handshakeOut, sizeof(uint64_t)),
                                   [this](std::error_code ec, std::size_t length) {
+                                    (void)length;
                                       if (!ec) {
                                           // Validation data sent, clients should sit and wait
                                           // for a response (or a closure)
@@ -260,6 +266,7 @@ namespace RType {
                 }
                 asio::async_read(_socket, asio::buffer(&handshakeIn, sizeof(uint64_t)),
                                  [this, server](std::error_code ec, std::size_t length) {
+                                    (void)length;
                                      if (!ec) {
                                          if (ownerType == owner::server) {
                                              // Connection is a server, so check response from client
@@ -288,7 +295,7 @@ namespace RType {
                                      } else {
                                          // Some bigger failure occurred
                                          std::cout << "Client Disconnected (ReadValidation)" << std::endl;
-//                                         _socket.close();
+                                         //                                         _socket.close();
                                      }
                                  });
             }
