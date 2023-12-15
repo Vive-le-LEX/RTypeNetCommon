@@ -59,7 +59,7 @@ namespace RType {
             }
 
            private:
-            void WriteHeader() final {
+            virtual void WriteHeader() final {
                 asio::async_write(this->asioSocket,
                                   asio::buffer(&this->outgoingMessages.front().header, sizeof(message_header<MessageType>)),
                                   [this](std::error_code ec, std::size_t length) {
@@ -80,7 +80,7 @@ namespace RType {
                                   });
             }
 
-            void WriteBody() final {
+            virtual void WriteBody() final {
                 asio::async_write(this->asioSocket,
                                   asio::buffer(this->outgoingMessages.front().body.data(), this->outgoingMessages.front().body.size()),
                                   [this](std::error_code ec, std::size_t length) {
@@ -97,7 +97,7 @@ namespace RType {
                                   });
             }
 
-            void ReadHeader() final {
+            virtual void ReadHeader() final {
                 asio::async_read(this->asioSocket,
                                  asio::buffer(&this->tmpIncomingMessage.header, sizeof(message_header<MessageType>)),
                                  [this](std::error_code ec, std::size_t length) {
@@ -116,7 +116,7 @@ namespace RType {
                                  });
             }
 
-            void ReadBody() final {
+            virtual void ReadBody() final {
                 asio::async_read(this->asioSocket,
                                  asio::buffer(this->tmpIncomingMessage.body.data(), this->tmpIncomingMessage.body.size()),
                                  [this](std::error_code ec, std::size_t length) {
@@ -130,7 +130,7 @@ namespace RType {
                                  });
             }
 
-            void WriteValidation() final {
+            virtual void WriteValidation() final {
                 asio::async_write(this->asioSocket,
                                   asio::buffer(&this->handshakeOut, sizeof(uint64_t)),
                                   [this](std::error_code ec, std::size_t length) {
@@ -146,7 +146,7 @@ namespace RType {
                                   });
             }
 
-            void ReadValidation(const RType::net::ServerInterface<MessageType>* server) final {
+            virtual void ReadValidation(const RType::net::ServerInterface<MessageType>* server) final {
                 if (this->connectionOwner == owner::server) {
                     AsyncTimer::GetInstance()->addTimer(this->id, 1000, [this, server]() {
                         std::cout << "Client Timed out while reading validation" << std::endl;
