@@ -50,7 +50,7 @@ namespace RType {
 
             virtual ~AConnection() = default;
 
-            [[nodiscard]] uint32_t GetID() const final {
+            [[nodiscard]] uint32_t GetID() const {
                 return id;
             }
 
@@ -68,7 +68,7 @@ namespace RType {
             /*
                 @brief Disconnect from server
             */
-            void Disconnect() final {
+            void Disconnect() {
                 if (IsConnected())
                     asio::post(asioContext, [this]() {
                         asioSocket.close();
@@ -86,7 +86,7 @@ namespace RType {
             /*
                 @brief Start listening for incoming messages
             */
-            void StartListening() final {
+            void StartListening() {
             }
 
             virtual void Send(const message<MessageType>& msg)  = 0;
