@@ -26,7 +26,7 @@ namespace RType {
            public:
             AConnection(owner parent,
                         asio::io_context& context,
-                        asio::basic_stream_socket<asio::ip::tcp> socket,
+                        asio::ip::tcp::socket socket,
                         TsQueue<owned_message<MessageType, TcpConnection<MessageType>>>& incomingMessages) : asioContext(context),
                                                                                                              tcpSocket(std::move(socket)),
                                                                                                              incomingTcpMessages(incomingMessages) {
@@ -69,7 +69,7 @@ namespace RType {
                             ReadValidation(server);
                         }
                     } else {
-                        if (udpSocket.is_open()) {
+                        if (udpSocket->is_open()) {
                             id = uid;
 
                             //TODO: UDP
@@ -88,7 +88,7 @@ namespace RType {
                         });
                     } else {
                         asio::post(asioContext, [this]() {
-                            udpSocket.close();
+                            udpSocket->close();
                         });
                     }
                 }
@@ -102,7 +102,7 @@ namespace RType {
                 if (connectionType == connection_type::tcp)
                     return tcpSocket.is_open();
                 else
-                    return udpSocket.is_open();
+                    return udpSocket->is_open();
             }
 
             /*
@@ -124,7 +124,7 @@ namespace RType {
 
             virtual void WriteValidation() = 0;
 
-            virtual void ReadValidation(RType::net::ServerInterface<MessageType>* server) = 0;
+            virtual void ReadValidation(RType::net::ServerInterface<MessageType>* server = nullptr) = 0;
 
         protected:
             virtual void AddToIncomingMessageQueue() = 0;
@@ -140,8 +140,8 @@ namespace RType {
             connection_type connectionType;
 
             asio::io_context& asioContext;
-            asio::basic_stream_socket<asio::ip::tcp> tcpSocket;
-            asio::basic_stream_socket<asio::ip::udp> udpSocket;
+            asio::ip::tcp::socket tcpSocket;
+            std::unique_ptr<asio::ip::udp::socket> udpSocket;
 
             TsQueue<message<MessageType>> outgoingMessages;
             TsQueue<owned_message<MessageType, TcpConnection<MessageType>>>& incomingTcpMessages;
@@ -150,7 +150,6 @@ namespace RType {
             uint64_t handshakeOut = 0;
             uint64_t handshakeIn = 0;
             uint64_t handshakeCheck = 0;
-
             uint32_t id = 0;
         };
     }  // namespace net

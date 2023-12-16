@@ -24,7 +24,7 @@ namespace RType {
            public:
             TcpConnection(owner parent,
                           asio::io_context& context,
-                          asio::basic_stream_socket<asio::ip::tcp> socket,
+                          asio::ip::tcp::socket socket,
                           TsQueue<owned_message<MessageType, TcpConnection<MessageType>>>& incomingMessages) : AConnection<MessageType>(parent, context, std::move(socket), incomingMessages) {}
 
             virtual ~TcpConnection() = default;
@@ -35,7 +35,7 @@ namespace RType {
                 }
 
                 asio::async_connect(this->tcpSocket, endpoints,
-                                    [this](std::error_code ec, asio::ip::tcp::endpoint& endpoint) {
+                                    [this](std::error_code ec, const asio::ip::tcp::endpoint& endpoint) {
                                         (void)endpoint;
                                         if (!ec) {
                                             this->ReadValidation();
@@ -145,7 +145,7 @@ namespace RType {
                                   });
             }
 
-            virtual void ReadValidation(const RType::net::ServerInterface<MessageType>* server) final {
+            virtual void ReadValidation(RType::net::ServerInterface<MessageType>* server = nullptr) final {
                 if (this->connectionOwner == owner::server) {
                     AsyncTimer::GetInstance()->addTimer(this->id, 1000, [this, server]() {
                         std::cout << "Client Timed out while reading validation" << std::endl;
@@ -165,7 +165,7 @@ namespace RType {
                                                  AsyncTimer::GetInstance()->removeTimer(this->id);
                                                  // Client has provided valid solution, so allow it to connect properly
                                                  std::cout << "Client Validated" << std::endl;
-//                                                 server->OnClientValidated(this->shared_from_this());
+                                                 server->OnClientValidated(this->shared_from_this());
 
                                                  // Sit waiting to receive data now
                                                  ReadHeader();
@@ -191,9 +191,13 @@ namespace RType {
 
             virtual void AddToIncomingMessageQueue() final {
                 if (this->connectionOwner == owner::server) {
-                    this->incomingMessages.push_back({this->shared_from_this(), this->tempIncomingMessage});
+                    owned_message<MessageType, TcpConnection<MessageType>> msg;
+                    msg.remote = this->shared_from_this();
+                    msg.msg = this->tempIncomingMessage;
+                    this->incomingTcpMessages.push_back(msg);
                 } else {
-                    this->incomingMessages.push_back({nullptr, this->tempIncomingMessage});
+                    owned_message<MessageType, TcpConnection<MessageType>> msg{nullptr, this->tempIncomingMessage};
+                    this->incomingTcpMessages.push_back(msg);
                 }
 
                 ReadHeader();

@@ -78,7 +78,7 @@ namespace RType {
                             std::cout << "[SERVER] New Connection: " << _socket.remote_endpoint() << "\n";
 
                             std::shared_ptr<TcpConnection<MessageType>> newConnection =
-                                std::make_shared<TcpConnection<MessageType>>(TcpConnection<MessageType>::owner::server,
+                                std::make_shared<TcpConnection<MessageType>>(owner::server,
                                                                              asioContext, std::move(_socket), incomingTcpMessages);
 
                             if (OnClientConnect(newConnection)) {
