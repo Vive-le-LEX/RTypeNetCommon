@@ -20,7 +20,7 @@ namespace RType {
         class ServerInterface;
 
         template <typename MessageType>
-        class TcpConnection : public AConnection<MessageType> {
+        class TcpConnection : public AConnection<MessageType>, public std::enable_shared_from_this<TcpConnection<MessageType>> {
            public:
             TcpConnection(owner parent,
                           asio::io_context& context,
