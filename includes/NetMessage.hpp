@@ -102,9 +102,6 @@ namespace RType {
             }
         };
 
-        template <typename T>
-        class connection;
-
         /*
             @struct owned_message
             @brief An "owned" message is identical to a regular message, but it is associated with
@@ -113,12 +110,12 @@ namespace RType {
 
             @tparam T Message type
         */
-        template <typename T>
+        template< typename T, typename ConnectionType>
         struct owned_message {
-            std::shared_ptr<connection<T>> remote = nullptr;
+            std::shared_ptr<ConnectionType> remote = nullptr;
             message<T> msg;
 
-            friend std::ostream& operator<<(std::ostream& os, const owned_message<T>& message) {
+            friend std::ostream& operator<<(std::ostream& os, const owned_message<T, ConnectionType>& message) {
                 os << message.msg;
                 return os;
             }

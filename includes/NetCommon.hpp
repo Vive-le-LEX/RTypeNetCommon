@@ -86,3 +86,17 @@ class AsyncTimer : public Singleton<AsyncTimer> {
 
     std::unordered_map<uint32_t, std::function<void()> > _callbacks;
 };
+
+namespace RType {
+    namespace net {
+        enum class owner {
+            server,
+            client
+        };
+
+        enum class connection_type {
+            tcp,
+            udp
+        };
+    }
+}  // namespace RType

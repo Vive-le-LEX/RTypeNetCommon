@@ -21,21 +21,17 @@ namespace RType {
         template <typename T>
         class ServerInterface;
 
-        enum class owner {
-            server,
-            client
-        };
-        template <typename MessageType, typename SocketType>
-        class AConnection : public std::enable_shared_from_this<AConnection<MessageType, SocketType>> {
+        template <typename MessageType>
+        class AConnection : public std::enable_shared_from_this<AConnection<MessageType>> {
            public:
-
             AConnection(owner parent,
                         asio::io_context& context,
-                        asio::basic_stream_socket<SocketType> socket,
-                        TsQueue<owned_message<MessageType>>& incomingMessages) : asioContext(context),
-                                                                                 asioSocket(std::move(socket)),
-                                                                                 incomingMessages(incomingMessages) {
+                        asio::basic_stream_socket<asio::ip::tcp> socket,
+                        TsQueue<owned_message<MessageType, TcpConnection<MessageType>>>& incomingMessages) : asioContext(context),
+                                                                                                             tcpSocket(std::move(socket)),
+                                                                                                             incomingTcpMessages(incomingMessages) {
                 connectionOwner = parent;
+                connectionType = connection_type::tcp;
                 AsyncTimer::Construct();
                 if (connectionOwner == owner::server) {
                     handshakeOut = uint64_t(std::chrono::system_clock::now().time_since_epoch().count());
@@ -54,14 +50,30 @@ namespace RType {
                 return id;
             }
 
+            [[nodiscard]] connection_type GetType() const {
+                return connectionType;
+            }
+
+            [[nodiscard]] owner GetOwner() const {
+                return connectionOwner;
+            }
+
             void ConnectToClient(RType::net::ServerInterface<MessageType>* server, uint32_t uid = 0) {
                 if (connectionOwner == owner::server) {
-                    if (asioSocket.is_open()) {
-                        id = uid;
+                    if (connectionType == connection_type::tcp) {
+                        if (tcpSocket.is_open()) {
+                            id = uid;
 
-                        WriteValidation();
+                            WriteValidation();
 
-                        ReadValidation(server);
+                            ReadValidation(server);
+                        }
+                    } else {
+                        if (udpSocket.is_open()) {
+                            id = uid;
+
+                            //TODO: UDP
+                        }
                     }
                 }
             }
@@ -70,9 +82,15 @@ namespace RType {
             */
             void Disconnect() {
                 if (IsConnected())
-                    asio::post(asioContext, [this]() {
-                        asioSocket.close();
-                    });
+                    if (connectionType == connection_type::tcp) {
+                        asio::post(asioContext, [this]() {
+                            tcpSocket.close();
+                        });
+                    } else {
+                        asio::post(asioContext, [this]() {
+                            udpSocket.close();
+                        });
+                    }
             }
 
             /*
@@ -80,7 +98,10 @@ namespace RType {
                 @return True if the client is connected to a server, false otherwise
             */
             [[nodiscard]] bool IsConnected() const {
-                return asioSocket.is_open();
+                if (connectionType == connection_type::tcp)
+                    return tcpSocket.is_open();
+                else
+                    return udpSocket.is_open();
             }
 
             /*
@@ -89,10 +110,9 @@ namespace RType {
             void StartListening() {
             }
 
-            virtual void Send(const message<MessageType>& msg)  = 0;
+            virtual void Send(const message<MessageType>& msg) = 0;
 
            private:
-
             virtual void WriteHeader() = 0;
 
             virtual void WriteBody() = 0;
@@ -105,12 +125,12 @@ namespace RType {
 
             virtual void ReadValidation(RType::net::ServerInterface<MessageType>* server) = 0;
 
-
             void AddToIncomingMessageQueue() {
+                auto currentTypeQueue = connectionType == connection_type::tcp ? incomingTcpMessages : incomingUdpMessages;
                 if (connectionOwner == owner::server)
-                    incomingMessages.push_back({this->shared_from_this(), tempIncomingMessage});
+                    currentTypeQueue.push_back({this->shared_from_this(), tempIncomingMessage});
                 else
-                    incomingMessages.push_back({nullptr, tempIncomingMessage});
+                    currentTypeQueue.push_back({nullptr, tempIncomingMessage});
                 ReadHeader();
             }
 
@@ -122,12 +142,14 @@ namespace RType {
 
            protected:
             owner connectionOwner;
+            connection_type connectionType;
 
             asio::io_context& asioContext;
-            asio::basic_stream_socket<SocketType> asioSocket;
+            asio::basic_stream_socket<asio::ip::tcp> tcpSocket;
+            asio::basic_stream_socket<asio::ip::udp> udpSocket;
 
             TsQueue<message<MessageType>> outgoingMessages;
-            TsQueue<owned_message<MessageType>>& incomingMessages;
+            TsQueue<owned_message<MessageType, TcpConnection<MessageType>>>& incomingTcpMessages;
             message<MessageType> tempIncomingMessage;
 
             uint64_t handshakeOut = 0;

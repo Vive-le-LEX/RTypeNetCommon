@@ -20,13 +20,12 @@ namespace RType {
         class ServerInterface;
 
         template <typename MessageType>
-        class TcpConnection : public AConnection<MessageType, asio::ip::tcp> {
+        class TcpConnection : public AConnection<MessageType> {
            public:
             TcpConnection(owner parent,
                           asio::io_context& context,
                           asio::basic_stream_socket<asio::ip::tcp> socket,
-                          TsQueue<owned_message<MessageType>>& incomingMessages) : AConnection<MessageType,
-                                                                                               asio::ip::tcp>(parent, context, std::move(socket), incomingMessages) {}
+                          TsQueue<owned_message<MessageType, TcpConnection<MessageType>>>& incomingMessages) : AConnection<MessageType>(parent, context, std::move(socket), incomingMessages) {}
 
             virtual ~TcpConnection() = default;
 
@@ -35,14 +34,14 @@ namespace RType {
                     throw std::runtime_error("Cannot connect a server to a server");
                 }
 
-                asio::async_connect(this->asioSocket, endpoints,
+                asio::async_connect(this->tcpSocket, endpoints,
                                     [this](std::error_code ec, asio::ip::tcp::endpoint& endpoint) {
                                         (void)endpoint;
                                         if (!ec) {
                                             this->ReadValidation();
                                         } else {
                                             std::cout << "[Error] Connection to server failed: " << ec.message() << std::endl;
-                                            this->asioSocket.close();
+                                            this->tcpSocket.close();
                                         }
                                     });
             }
@@ -60,7 +59,7 @@ namespace RType {
 
            private:
             virtual void WriteHeader() final {
-                asio::async_write(this->asioSocket,
+                asio::async_write(this->tcpSocket,
                                   asio::buffer(&this->outgoingMessages.front().header, sizeof(message_header<MessageType>)),
                                   [this](std::error_code ec, std::size_t length) {
                                       (void)length;
@@ -75,13 +74,13 @@ namespace RType {
                                           }
                                       } else {
                                           std::cout << "[Error][" << this->id << "] Write header failed: " << ec.message() << std::endl;
-                                          this->asioSocket.close();
+                                          this->tcpSocket.close();
                                       }
                                   });
             }
 
             virtual void WriteBody() final {
-                asio::async_write(this->asioSocket,
+                asio::async_write(this->tcpSocket,
                                   asio::buffer(this->outgoingMessages.front().body.data(), this->outgoingMessages.front().body.size()),
                                   [this](std::error_code ec, std::size_t length) {
                                       (void)length;
@@ -92,13 +91,13 @@ namespace RType {
                                           }
                                       } else {
                                           std::cout << "[Error][" << this->id << "] Write body failed: " << ec.message() << std::endl;
-                                          this->asioSocket.close();
+                                          this->tcpSocket.close();
                                       }
                                   });
             }
 
             virtual void ReadHeader() final {
-                asio::async_read(this->asioSocket,
+                asio::async_read(this->tcpSocket,
                                  asio::buffer(&this->tmpIncomingMessage.header, sizeof(message_header<MessageType>)),
                                  [this](std::error_code ec, std::size_t length) {
                                      (void)length;
@@ -111,13 +110,13 @@ namespace RType {
                                          }
                                      } else {
                                          std::cout << "[Error][" << this->id << "] Read header failed: " << ec.message() << std::endl;
-                                         this->asioSocket.close();
+                                         this->tcpSocket.close();
                                      }
                                  });
             }
 
             virtual void ReadBody() final {
-                asio::async_read(this->asioSocket,
+                asio::async_read(this->tcpSocket,
                                  asio::buffer(this->tmpIncomingMessage.body.data(), this->tmpIncomingMessage.body.size()),
                                  [this](std::error_code ec, std::size_t length) {
                                      (void)length;
@@ -125,13 +124,13 @@ namespace RType {
                                          this->AddToIncomingMessages();
                                      } else {
                                          std::cout << "[Error][" << this->id << "] Read body failed: " << ec.message() << std::endl;
-                                         this->asioSocket.close();
+                                         this->tcpSocket.close();
                                      }
                                  });
             }
 
             virtual void WriteValidation() final {
-                asio::async_write(this->asioSocket,
+                asio::async_write(this->tcpSocket,
                                   asio::buffer(&this->handshakeOut, sizeof(uint64_t)),
                                   [this](std::error_code ec, std::size_t length) {
                                       (void)length;
@@ -141,7 +140,7 @@ namespace RType {
                                           }
                                       } else {
                                           std::cout << "[Error][" << this->id << "] Write validation failed: " << ec.message() << std::endl;
-                                          this->asioSocket.close();
+                                          this->tcpSocket.close();
                                       }
                                   });
             }
@@ -150,11 +149,11 @@ namespace RType {
                 if (this->connectionOwner == owner::server) {
                     AsyncTimer::GetInstance()->addTimer(this->id, 1000, [this, server]() {
                         std::cout << "Client Timed out while reading validation" << std::endl;
-                        this->asioSocket.close();
+                        this->tcpSocket.close();
                     });
                 }
 
-                asio::async_read(this->asioSocket, asio::buffer(&this->handshakeIn, sizeof(uint64_t)),
+                asio::async_read(this->tcpSocket, asio::buffer(&this->handshakeIn, sizeof(uint64_t)),
                                  [this, server](std::error_code ec, std::size_t length) {
                                      (void)length;
                                      if (!ec) {
@@ -173,7 +172,7 @@ namespace RType {
                                              } else {
                                                  // Client gave incorrect data, so disconnect
                                                  std::cout << "Client Disconnected (Fail Validation)" << std::endl;
-                                                 this->asioSocket.close();
+                                                 this->tcpSocket.close();
                                              }
                                          } else {
                                              // Connection is a client, so solve puzzle
@@ -185,7 +184,7 @@ namespace RType {
                                      } else {
                                          // Some bigger failure occurred
                                          std::cout << "Client Disconnected (ReadValidation)" << std::endl;
-                                         this->asioSocket.close();
+                                         this->tcpSocket.close();
                                      }
                                  });
             }
