@@ -81,7 +81,7 @@ namespace RType {
                 @brief Disconnect from server
             */
             void Disconnect() {
-                if (IsConnected())
+                if (IsConnected()) {
                     if (connectionType == connection_type::tcp) {
                         asio::post(asioContext, [this]() {
                             tcpSocket.close();
@@ -91,6 +91,7 @@ namespace RType {
                             udpSocket.close();
                         });
                     }
+                }
             }
 
             /*
@@ -125,14 +126,8 @@ namespace RType {
 
             virtual void ReadValidation(RType::net::ServerInterface<MessageType>* server) = 0;
 
-            void AddToIncomingMessageQueue() {
-                auto currentTypeQueue = connectionType == connection_type::tcp ? incomingTcpMessages : incomingUdpMessages;
-                if (connectionOwner == owner::server)
-                    currentTypeQueue.push_back({this->shared_from_this(), tempIncomingMessage});
-                else
-                    currentTypeQueue.push_back({nullptr, tempIncomingMessage});
-                ReadHeader();
-            }
+        protected:
+            virtual void AddToIncomingMessageQueue() = 0;
 
             uint64_t scramble(uint64_t input) {
                 uint64_t out = input ^ 0xDEADBEEFC0DECAFE;

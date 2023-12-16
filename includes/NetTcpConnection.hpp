@@ -98,15 +98,15 @@ namespace RType {
 
             virtual void ReadHeader() final {
                 asio::async_read(this->tcpSocket,
-                                 asio::buffer(&this->tmpIncomingMessage.header, sizeof(message_header<MessageType>)),
+                                 asio::buffer(&this->tempIncomingMessage.header, sizeof(message_header<MessageType>)),
                                  [this](std::error_code ec, std::size_t length) {
                                      (void)length;
                                      if (!ec) {
-                                         if (this->tmpIncomingMessage.header.size > 0) {
-                                             this->tmpIncomingMessage.body.resize(this->tmpIncomingMessage.header.size);
+                                         if (this->tempIncomingMessage.header.size > 0) {
+                                             this->tempIncomingMessage.body.resize(this->tempIncomingMessage.header.size);
                                              ReadBody();
                                          } else {
-                                             this->AddToIncomingMessages();
+                                             this->AddToIncomingMessageQueue();
                                          }
                                      } else {
                                          std::cout << "[Error][" << this->id << "] Read header failed: " << ec.message() << std::endl;
@@ -117,11 +117,11 @@ namespace RType {
 
             virtual void ReadBody() final {
                 asio::async_read(this->tcpSocket,
-                                 asio::buffer(this->tmpIncomingMessage.body.data(), this->tmpIncomingMessage.body.size()),
+                                 asio::buffer(this->tempIncomingMessage.body.data(), this->tempIncomingMessage.body.size()),
                                  [this](std::error_code ec, std::size_t length) {
                                      (void)length;
                                      if (!ec) {
-                                         this->AddToIncomingMessages();
+                                         this->AddToIncomingMessageQueue();
                                      } else {
                                          std::cout << "[Error][" << this->id << "] Read body failed: " << ec.message() << std::endl;
                                          this->tcpSocket.close();
@@ -165,7 +165,7 @@ namespace RType {
                                                  AsyncTimer::GetInstance()->removeTimer(this->id);
                                                  // Client has provided valid solution, so allow it to connect properly
                                                  std::cout << "Client Validated" << std::endl;
-                                                 server->OnClientValidated(this->shared_from_this());
+//                                                 server->OnClientValidated(this->shared_from_this());
 
                                                  // Sit waiting to receive data now
                                                  ReadHeader();
@@ -187,6 +187,16 @@ namespace RType {
                                          this->tcpSocket.close();
                                      }
                                  });
+            }
+
+            virtual void AddToIncomingMessageQueue() final {
+                if (this->connectionOwner == owner::server) {
+                    this->incomingMessages.push_back({this->shared_from_this(), this->tempIncomingMessage});
+                } else {
+                    this->incomingMessages.push_back({nullptr, this->tempIncomingMessage});
+                }
+
+                ReadHeader();
             }
         };
 
