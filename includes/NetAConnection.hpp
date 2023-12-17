@@ -49,6 +49,26 @@ namespace RType {
                 }
             }
 
+            AConnection(owner parent,
+                        asio::io_context& context,
+                        asio::ip::udp::socket socket,
+                        TsQueue<owned_message<MessageType, UdpConnection<MessageType>>>& incomingMessages) : asioContext(context),
+                                                                                                             udpSocket(std::make_unique<asio::ip::udp::socket>(std::move(socket))),
+                                                                                                             incomingUdpMessages(incomingMessages) {
+                connectionOwner = parent;
+                connectionType = connection_type::udp;
+                AsyncTimer::Construct();
+                if (connectionOwner == owner::server) {
+                    handshakeOut = uint64_t(std::chrono::system_clock::now().time_since_epoch().count());
+
+                    handshakeCheck = scramble(handshakeOut);
+                } else {
+                    // Connection is Client -> Server, so we have nothing to define,
+                    handshakeIn = 0;
+                    handshakeOut = 0;
+                }
+            }
+
             virtual ~AConnection() = default;
 
             [[nodiscard]] uint32_t GetID() const {
@@ -150,6 +170,7 @@ namespace RType {
 
             TsQueue<message<MessageType>> outgoingMessages;
             TsQueue<owned_message<MessageType, TcpConnection<MessageType>>>& incomingTcpMessages;
+            TsQueue<owned_message<MessageType, UdpConnection<MessageType>>>& incomingUdpMessages;
             message<MessageType> tempIncomingMessage;
 
             uint64_t handshakeOut = 0;
