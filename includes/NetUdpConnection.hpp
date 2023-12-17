@@ -24,15 +24,19 @@ namespace RType {
         public:
             UdpConnection(owner parent,
                           asio::io_context& context,
-                          const asio::ip::udp::endpoint& endpoint,
+                          asio::ip::udp::endpoint endpoint,
                           TsQueue<owned_message<MessageType, UdpConnection<MessageType>>>& incomingMessages) : asioContext(context),
-                                                                                                               udpEndpoint(endpoint),
+                                                                                                               udpEndpoint(std::move(endpoint)),
                                                                                                                incomingUdpMessages(incomingMessages),
                                                                                                                udpSocket(context)
             {
                 connectionOwner = parent;
                 udpSocket.open(udpEndpoint.protocol());
-                udpSocket.bind(udpEndpoint);
+                if (connectionOwner == owner::server) {
+                    udpSocket.bind(udpEndpoint);
+                } else {
+                    udpSocket.bind(asio::ip::udp::endpoint(udpEndpoint.protocol(), 0));
+                }
                 AsyncTimer::Construct();
                 if (connectionOwner == owner::server) {
                     handshakeOut = uint64_t(std::chrono::system_clock::now().time_since_epoch().count());

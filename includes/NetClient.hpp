@@ -19,7 +19,7 @@ namespace RType {
     namespace net {
         template <typename MessageType>
         class ClientInterface {
-           public:
+        public:
             ClientInterface() = default;
 
             virtual ~ClientInterface() {
@@ -53,10 +53,7 @@ namespace RType {
 
             bool ConnectToRoom() {
                 try {
-                    asio::ip::udp::resolver resolver(context);
-                    asio::ip::udp::resolver::results_type endpoints = resolver.resolve(asio::ip::udp::v4(), _host, std::to_string(_port));
-
-                    currentUdpConnection = std::make_unique<UdpConnection<MessageType>>(owner::client, context, asio::ip::udp::socket(context), incomingUdpMessages);
+                    currentUdpConnection = std::make_unique<UdpConnection<MessageType>>(owner::client, context, asio::ip::udp::endpoint(asio::ip::udp::v4(), _port), incomingUdpMessages);
 
                     std::cout << "Connecting to room" << std::endl;
                 } catch (std::exception& e) {
@@ -110,7 +107,7 @@ namespace RType {
                 return incomingTcpMessages;
             }
 
-           protected:
+        protected:
             std::string _host;
             uint16_t _port;
 
@@ -119,7 +116,7 @@ namespace RType {
             std::unique_ptr<TcpConnection<MessageType>> currentTcpConnection;
             std::unique_ptr<UdpConnection<MessageType>> currentUdpConnection;
 
-           private:
+        private:
             // This is the thread safe queue of incoming messages from server
             TsQueue<owned_message<MessageType, TcpConnection<MessageType>>> incomingTcpMessages;
             TsQueue<owned_message<MessageType, UdpConnection<MessageType>>> incomingUdpMessages;
