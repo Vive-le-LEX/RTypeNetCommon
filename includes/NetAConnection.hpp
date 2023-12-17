@@ -13,13 +13,18 @@
 
 #include "NetCommon.hpp"
 #include "NetMessage.hpp"
-#include "NetServer.hpp"
 #include "NetTsqueue.hpp"
 
 namespace RType {
     namespace net {
         template <typename T>
         class ServerInterface;
+
+        template <typename T>
+        class TcpConnection;
+
+        template <typename T>
+        class UdpConnection;
 
         template <typename MessageType>
         class AConnection {
