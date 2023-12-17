@@ -14,8 +14,8 @@
 #include "NetCommon.hpp"
 #include "NetMessage.hpp"
 #include "NetTcpConnection.hpp"
-#include "NetUdpConnection.hpp"
 #include "NetTsqueue.hpp"
+#include "NetUdpConnection.hpp"
 
 namespace RType {
     namespace net {
@@ -32,9 +32,8 @@ namespace RType {
                 @brief Construct the server interface
                 @param port The port to listen on
             */
-            explicit ServerInterface(uint16_t port) :
-                    asioAcceptor(asioContext, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port)){
-                       std::cout << "[SERVER] Listening on: " << getIp() << ":" << port << std::endl;
+            explicit ServerInterface(uint16_t port) : asioAcceptor(asioContext, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port)), port(port) {
+                std::cout << "[SERVER] Listening on: " << getIp() << ":" << port << std::endl;
             }
 
             virtual ~ServerInterface() {
@@ -48,8 +47,7 @@ namespace RType {
             bool Start() {
                 try {
                     WaitForClientConnection();
-
-
+                    udpConnection = std::make_shared<UdpConnection<MessageType>>(asioContext, asio::ip::udp::endpoint(asio::ip::udp::v4(), port), incomingUdpMessages);
                     threadContext = std::thread([this]() { asioContext.run(); });
                 } catch (std::exception& e) {
                     std::cerr << "[SERVER] Exception: " << e.what() << "\n";
@@ -119,7 +117,7 @@ namespace RType {
 
                     // Then physically remove it from the container
                     activeTcpConnections.erase(
-                            std::remove(activeTcpConnections.begin(), activeTcpConnections.end(), client), activeTcpConnections.end());
+                        std::remove(activeTcpConnections.begin(), activeTcpConnections.end(), client), activeTcpConnections.end());
                 }
             }
 
@@ -145,7 +143,7 @@ namespace RType {
 
                 if (invalidClientExists)
                     activeTcpConnections.erase(
-                            std::remove(activeTcpConnections.begin(), activeTcpConnections.end(), nullptr), activeTcpConnections.end());
+                        std::remove(activeTcpConnections.begin(), activeTcpConnections.end(), nullptr), activeTcpConnections.end());
             }
 
             /*
@@ -191,6 +189,8 @@ namespace RType {
             virtual void OnClientValidated(std::shared_ptr<TcpConnection<MessageType>> client) = 0;
 
            protected:
+            uint16_t port;
+
             TsQueue<owned_message<MessageType, TcpConnection<MessageType>>> incomingTcpMessages;
             TsQueue<owned_message<MessageType, UdpConnection<MessageType>>> incomingUdpMessages;
 

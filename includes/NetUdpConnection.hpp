@@ -24,12 +24,13 @@ namespace RType {
         public:
             UdpConnection(owner parent,
                           asio::io_context& context,
-                          const std::string& host,
-                          uint16_t port,
+                          const asio::ip::udp::endpoint& endpoint,
                           TsQueue<owned_message<MessageType, UdpConnection<MessageType>>>& incomingMessages) : asioContext(context),
-                                                                                                               incomingUdpMessages(incomingMessages) {
+                                                                                                               udpEndpoint(endpoint),
+                                                                                                               incomingUdpMessages(incomingMessages),
+                                                                                                               udpSocket(context)
+            {
                 connectionOwner = parent;
-                udpEndpoint = asio::ip::udp::endpoint(asio::ip::address::from_string(host), port);
                 udpSocket.open(udpEndpoint.protocol());
                 udpSocket.bind(udpEndpoint);
                 AsyncTimer::Construct();
@@ -89,17 +90,17 @@ namespace RType {
                                         [this](std::error_code ec, std::size_t length) {
                                             (void)length;
                                             if (!ec) {
-                                                if (this->outgoingMessages.body.size() > 0) {
+                                                if (outgoingMessages.body.size() > 0) {
                                                     WriteBody();
                                                 } else {
-                                                    this->outgoingMessages.pop_front();
-                                                    if (!this->outgoingMessages.empty()) {
+                                                    outgoingMessages.pop_front();
+                                                    if (!outgoingMessages.empty()) {
                                                         WriteHeader();
                                                     }
                                                 }
                                             } else {
-                                                std::cout << "[Error UDP][" << this->id << "] Write header failed: " << ec.message() << std::endl;
-                                                this->udpSocket.close();
+                                                std::cout << "[Error UDP][" << id << "] Write header failed: " << ec.message() << std::endl;
+                                                udpSocket.close();
                                             }
                                         });
             }
@@ -109,13 +110,13 @@ namespace RType {
                                         [this](std::error_code ec, std::size_t length) {
                                             (void)length;
                                             if (!ec) {
-                                                this->outgoingMessages.pop_front();
-                                                if (!this->outgoingMessages.empty()) {
+                                                outgoingMessages.pop_front();
+                                                if (!outgoingMessages.empty()) {
                                                     WriteHeader();
                                                 }
                                             } else {
-                                                std::cout << "[Error UDP][" << this->id << "] Write body failed: " << ec.message() << std::endl;
-                                                this->udpSocket.close();
+                                                std::cout << "[Error UDP][" << id << "] Write body failed: " << ec.message() << std::endl;
+                                                udpSocket.close();
                                             }
                                         });
             }
@@ -132,7 +133,7 @@ namespace RType {
                                                          AddToIncomingMessageQueue();
                                                      }
                                                  } else {
-                                                     std::cout << "[Error UDP][" << this->id << "] Read header failed: " << ec.message() << std::endl;
+                                                     std::cout << "[Error UDP][" << id << "] Read header failed: " << ec.message() << std::endl;
                                                      udpSocket.close();
                                                  }
                                              });
@@ -145,14 +146,14 @@ namespace RType {
                                                  if (!ec) {
                                                      AddToIncomingMessageQueue();
                                                  } else {
-                                                     std::cout << "[Error UDP][" << this->id << "] Read body failed: " << ec.message() << std::endl;
+                                                     std::cout << "[Error UDP][" << id << "] Read body failed: " << ec.message() << std::endl;
                                                      udpSocket.close();
                                                  }
                                              });
             }
 
             void WriteValidation() {
-                udpSocket.async_send_to(asio::buffer(&this->handshakeOut, sizeof(uint64_t)), udpEndpoint,
+                udpSocket.async_send_to(asio::buffer(&handshakeOut, sizeof(uint64_t)), udpEndpoint,
                                         [this](std::error_code ec, std::size_t length) {
                                             (void)length;
                                             if (!ec) {
@@ -160,43 +161,44 @@ namespace RType {
                                                     ReadHeader();
                                                 }
                                             } else {
-                                                std::cout << "[Error UDP][" << this->id << "] Write validation failed: " << ec.message() << std::endl;
+                                                std::cout << "[Error UDP][" << id << "] Write validation failed: " << ec.message() << std::endl;
                                                 udpSocket.close();
                                             }
                                         });
             }
 
             virtual void ReadValidation(RType::net::ServerInterface<MessageType>* server = nullptr) final {
-                if (this->connectionOwner == owner::server) {
-                    AsyncTimer::GetInstance()->addTimer(this->id, 1000, [this, server]() {
+                if (connectionOwner == owner::server) {
+                    AsyncTimer::GetInstance()->addTimer(id, 1000, [this, server]() {
                         std::cout << "Client Timed out while reading validation" << std::endl;
-                        this->tcpSocket.close();
+                        udpSocket.close();
                     });
                 }
-                udpSocket.async_receive_from(asio::buffer(&this->handshakeIn, sizeof(uint64_t)), udpEndpoint,
+                udpSocket.async_receive_from(asio::buffer(&handshakeIn, sizeof(uint64_t)), udpEndpoint,
                                              [this, server](std::error_code ec, std::size_t length) {
                                                  (void)length;
                                                  if (!ec) {
-                                                     if (this->connectionOwner == owner::server) {
+                                                     if (connectionOwner == owner::server) {
                                                          // Connection is a server, so check response from client
 
                                                          // Compare sent data to actual solution
-                                                         if (this->handshakeIn == this->handshakeCheck) {
-                                                             AsyncTimer::GetInstance()->removeTimer(this->id);
+                                                         if (handshakeIn == handshakeCheck) {
+                                                             AsyncTimer::GetInstance()->removeTimer(id);
                                                              // Client has provided valid solution, so allow it to connect properly
                                                              std::cout << "Client Validated" << std::endl;
-                                                             server->OnClientValidated(this->shared_from_this());
+                                                             // TODO: UDP
+                                                             //  server->OnClientValidated(this->shared_from_this());
 
                                                              // Sit waiting to receive data now
                                                              ReadHeader();
                                                          } else {
                                                              // Client gave incorrect data, so disconnect
                                                              std::cout << "Client Disconnected (Fail Validation)" << std::endl;
-                                                             this->udpSocket.close();
+                                                             udpSocket.close();
                                                          }
                                                      } else {
                                                          // Connection is a client, so solve puzzle
-                                                         this->handshakeOut = this->scramble(this->handshakeIn);
+                                                         handshakeOut = scramble(handshakeIn);
 
                                                          // Write the result
                                                          WriteValidation();
@@ -204,20 +206,20 @@ namespace RType {
                                                  } else {
                                                      // Some bigger failure occurred
                                                      std::cout << "Client Disconnected (ReadValidation)" << std::endl;
-                                                     this->udpSocket.close();
+                                                     udpSocket.close();
                                                  }
                                              });
             }
 
             void AddToIncomingMessageQueue() {
-                if (this->connectionOwner == owner::server) {
+                if (connectionOwner == owner::server) {
                     owned_message<MessageType, UdpConnection<MessageType>> msg;
                     msg.remote = this->shared_from_this();
-                    msg.msg = this->tempIncomingMessage;
-                    this->incomingTcpMessages.push_back(msg);
+                    msg.msg = tempIncomingMessage;
+                    incomingUdpMessages.push_back(msg);
                 } else {
-                    owned_message<MessageType, UdpConnection<MessageType>> msg{nullptr, this->tempIncomingMessage};
-                    this->incomingUdpMessages.push_back(msg);
+                    owned_message<MessageType, UdpConnection<MessageType>> msg{nullptr, tempIncomingMessage};
+                    incomingUdpMessages.push_back(msg);
                 }
 
                 ReadHeader();
