@@ -47,7 +47,7 @@ namespace RType {
             bool Start() {
                 try {
                     WaitForClientConnection();
-                    udpConnection = std::make_shared<UdpConnection<MessageType>>(asioContext, owner::server, asio::ip::udp::endpoint(asio::ip::udp::v4(), port), incomingUdpMessages);
+                    udpConnection = std::make_shared<UdpConnection<MessageType>>(owner::server, asioContext, asio::ip::udp::endpoint(asio::ip::udp::v4(), port), incomingUdpMessages);
                     threadContext = std::thread([this]() { asioContext.run(); });
                 } catch (std::exception& e) {
                     std::cerr << "[SERVER] Exception: " << e.what() << "\n";
