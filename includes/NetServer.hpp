@@ -14,12 +14,16 @@
 #include "NetCommon.hpp"
 #include "NetMessage.hpp"
 #include "NetTcpConnection.hpp"
+#include "NetUdpConnection.hpp"
 #include "NetTsqueue.hpp"
 
 namespace RType {
     namespace net {
         template <typename T>
         class TcpConnection;
+
+        template <typename T>
+        class UdpConnection;
 
         template <typename MessageType>
         class ServerInterface {
@@ -28,8 +32,10 @@ namespace RType {
                 @brief Construct the server interface
                 @param port The port to listen on
             */
-            explicit ServerInterface(uint16_t port) : asioAcceptor(asioContext, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port)) {
-                std::cout << "[SERVER] Listening on: " << getIp() << ":" << port << std::endl;
+            explicit ServerInterface(uint16_t port) :
+                    asioAcceptor(asioContext, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port)),
+                    udpConnection(owner::server, asioContext, std::move(asio::ip::udp::socket(asioContext, asio::ip::udp::endpoint(asio::ip::udp::v4(), port))), incomingUdpMessages) {
+                       std::cout << "[SERVER] Listening on: " << getIp() << ":" << port << std::endl;
             }
 
             virtual ~ServerInterface() {
@@ -43,6 +49,7 @@ namespace RType {
             bool Start() {
                 try {
                     WaitForClientConnection();
+
 
                     threadContext = std::thread([this]() { asioContext.run(); });
                 } catch (std::exception& e) {
@@ -186,8 +193,10 @@ namespace RType {
 
            protected:
             TsQueue<owned_message<MessageType, TcpConnection<MessageType>>> incomingTcpMessages;
+            TsQueue<owned_message<MessageType, UdpConnection<MessageType>>> incomingUdpMessages;
 
             std::deque<std::shared_ptr<TcpConnection<MessageType>>> activeTcpConnections;
+            UdpConnection<MessageType> udpConnection;
 
             asio::io_context asioContext;
             std::thread threadContext;
