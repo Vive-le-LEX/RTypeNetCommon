@@ -34,6 +34,8 @@ namespace RType {
             */
             bool ConnectToServer(const std::string& host, const uint16_t port) {
                 try {
+                    _host = host;
+                    _port = port;
                     asio::ip::tcp::resolver resolver(context);
                     asio::ip::tcp::resolver::results_type endpoints = resolver.resolve(host, std::to_string(port));
 
@@ -42,6 +44,21 @@ namespace RType {
                     currentTcpConnection->ConnectToServer(endpoints);
 
                     contextThread = std::thread([this]() { context.run(); });
+                } catch (std::exception& e) {
+                    std::cerr << "Client Exception: " << e.what() << "\n";
+                    return false;
+                }
+                return true;
+            }
+
+            bool ConnectToRoom() {
+                try {
+                    asio::ip::udp::resolver resolver(context);
+                    asio::ip::udp::resolver::results_type endpoints = resolver.resolve(asio::ip::udp::v4(), _host, std::to_string(_port));
+
+                    currentUdpConnection = std::make_unique<UdpConnection<MessageType>>(owner::client, context, asio::ip::udp::socket(context), incomingUdpMessages);
+
+                    std::cout << "Connecting to room" << std::endl;
                 } catch (std::exception& e) {
                     std::cerr << "Client Exception: " << e.what() << "\n";
                     return false;
@@ -94,13 +111,18 @@ namespace RType {
             }
 
            protected:
+            std::string _host;
+            uint16_t _port;
+
             asio::io_context context;
             std::thread contextThread;
             std::unique_ptr<TcpConnection<MessageType>> currentTcpConnection;
+            std::unique_ptr<UdpConnection<MessageType>> currentUdpConnection;
 
            private:
             // This is the thread safe queue of incoming messages from server
             TsQueue<owned_message<MessageType, TcpConnection<MessageType>>> incomingTcpMessages;
+            TsQueue<owned_message<MessageType, UdpConnection<MessageType>>> incomingUdpMessages;
         };
     }  // namespace net
 }  // namespace RType
