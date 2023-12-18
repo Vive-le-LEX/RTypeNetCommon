@@ -49,6 +49,18 @@ namespace RType {
                 }
             }
 
+            [[nodiscard]] bool IsConnected() const {
+                return udpSocket.is_open();
+            }
+
+            [[nodiscard]] uint32_t GetID() const {
+                return id;
+            }
+
+            [[nodiscard]] asio::ip::udp::endpoint GetEndpoint() const {
+                return udpEndpoint;
+            }
+
             void ConnectToClient(RType::net::ServerInterface<MessageType>* server, uint32_t uid = 0) {
                 if (connectionOwner == owner::server) {
                     if (udpSocket.is_open()) {
