@@ -41,6 +41,8 @@ namespace RType {
 
                     _socket.bind(_endpoint);
 
+                    _receiveBuffer.resize(1024);
+
                     _started = true;
                     onStarted();
                 };
@@ -190,6 +192,7 @@ namespace RType {
                     onReceived(_endpoint, _receiveBuffer.data(), received);
 
                     if (_receiveBuffer.size() == received) {
+                        std::cout << "Same size" << std::endl;
                         // Check the reception buffer limit
                         if (((2 * received) > _receiveBufferLimit) && (_receiveBufferLimit > 0)) {
                             //TODO: Handle errors
