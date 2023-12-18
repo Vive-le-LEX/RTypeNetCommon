@@ -19,10 +19,12 @@ namespace RType {
 
         template <typename MessageType>
         class UdpServer : public std::enable_shared_from_this<UdpServer<MessageType>> {
-           public:
+        public:
             UdpServer(asio::io_context& context, uint16_t port) : _port(port),
                                                                   _context(context),
-                                                                  _socket(context, asio::ip::udp::endpoint(asio::ip::udp::v4(), port)) {}
+                                                                  _socket(context) {
+                _endpoint = asio::ip::udp::endpoint(asio::ip::udp::v4(), port);
+            }
 
             bool Start() {
                 if (this->IsStarted()) {
@@ -43,7 +45,7 @@ namespace RType {
                     onStarted();
                 };
 
-                _context.get_executor().post(startHandler);
+                _context.post(startHandler);
                 return true;
             }
 
@@ -81,7 +83,9 @@ namespace RType {
 
                 asio::error_code ec;
 
-                size_t sent = _socket.send_to(asio::buffer(msg.header, msg.header.size), endpoint, 0, ec);
+                tempOutgoingMessage = msg;
+
+                size_t sent = _socket.send_to(asio::buffer(&tempOutgoingMessage.header, sizeof(message_header<MessageType>)), endpoint, 0, ec);
 
                 if (sent > 0) {
                     std::cout << "[UDP] Message sent to " << endpoint << std::endl;
@@ -107,11 +111,6 @@ namespace RType {
                     return false;
                 }
 
-                if (msg == nullptr) {
-                    std::cout << "[UDP] Message is null" << std::endl;
-                    return false;
-                }
-
                 _sending = true;
                 auto self = this->shared_from_this();
                 auto sendHandler = [this, self](std::error_code ec, size_t sent) {
@@ -128,7 +127,9 @@ namespace RType {
                     }
                 };
 
-                _socket.async_send_to(asio::buffer(msg.header, sizeof(message_header<MessageType>)), endpoint, sendHandler);
+                tempOutgoingMessage = msg;
+
+                _socket.async_send_to(asio::buffer(&tempOutgoingMessage.header, sizeof(message_header<MessageType>)), endpoint, sendHandler);
 
                 return true;
             }
@@ -175,7 +176,6 @@ namespace RType {
                 _receiving = true;
                 auto self = this->shared_from_this();
                 auto receiveHandler = [this, self](std::error_code ec, size_t received) {
-                    (void)received;
                     _receiving = false;
 
                     if (!this->IsStarted()) {
@@ -186,31 +186,59 @@ namespace RType {
                         std::cout << "[UDP] Error: " << ec.message() << std::endl;
                         return;
                     }
+
+                    onReceived(_endpoint, _receiveBuffer.data(), received);
+
+                    if (_receiveBuffer.size() == received) {
+                        // Check the reception buffer limit
+                        if (((2 * received) > _receiveBufferLimit) && (_receiveBufferLimit > 0)) {
+                            //TODO: Handle errors
+                            // SendError(asio::error::no_buffer_space);
+
+                            // Call the datagram received zero handler
+                            onReceived(_endpoint, _receiveBuffer.data(), 0);
+
+                            return;
+                        }
+
+                        _receiveBuffer.resize(2 * received);
+                    }
                 };
 
-                _socket.async_receive_from(asio::buffer(tempIncomingMessage.header, sizeof(message_header<MessageType>)), _endpoint, receiveHandler);
+                _socket.async_receive_from(asio::buffer(_receiveBuffer.data(), _receiveBuffer.size()), _endpoint, receiveHandler);
             }
 
             [[nodiscard]] bool IsStarted() const { return _started; }
 
             [[nodiscard]] u_int16_t GetPort() const { return _port; }
 
-           protected:
+        protected:
             //! Handle server started notification
-            virtual void onStarted() {}
+            virtual void onStarted() = 0;
             //! Handle server stopped notification
-            virtual void onStopped() {}
+            virtual void onStopped() = 0;
 
-           private:
+            //! Handle message received notification
+            virtual void onReceived(const asio::ip::udp::endpoint& endpoint, const void* buffer, size_t size) = 0;
+            //! Handle message sent notification
+            virtual void onSent(const asio::ip::udp::endpoint& endpoint, size_t sent) = 0;
+
+            //! Handle error notification
+            virtual void onError(int error, const std::string& category, const std::string& message) = 0;
+
+        private:
             u_int16_t _port;
 
             asio::io_context& _context;
             asio::ip::udp::socket _socket;
             asio::ip::udp::endpoint _endpoint;
 
-            message<MessageType> tempIncomingMessage;
+            std::vector<uint8_t> _receiveBuffer;
+            size_t _receiveBufferLimit{0};
 
-            bool _started = false;
+            message<MessageType> tempOutgoingMessage;
+
+            std::atomic<bool> _started = false;
             bool _sending = false;
             bool _receiving = false;
         };
