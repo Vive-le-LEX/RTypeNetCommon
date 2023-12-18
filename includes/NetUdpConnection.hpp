@@ -122,7 +122,7 @@ namespace RType {
             }
 
             void WriteBody() {
-                udpSocket.async_send_to(asio::buffer(outgoingMessages.front().body.data(), outgoingMessages.body.size()), udpEndpoint,
+                udpSocket.async_send_to(asio::buffer(outgoingMessages.front().body.data(), outgoingMessages.front().body.size()), udpEndpoint,
                                         [this](std::error_code ec, std::size_t length) {
                                             (void)length;
                                             if (!ec) {
