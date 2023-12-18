@@ -146,6 +146,14 @@ namespace RType {
                         std::remove(activeTcpConnections.begin(), activeTcpConnections.end(), nullptr), activeTcpConnections.end());
             }
 
+            void SendUdpMessage(const message<MessageType>& msg) {
+                if (udpConnection && udpConnection->IsConnected()) {
+                    udpConnection->Send(msg);
+                } else {
+                    std::cout << "[SERVER] UDP Connection is not connected" << std::endl;
+                }
+            }
+
             /*
                 @brief Force update the server
                 @param maxMessages The maximum number of messages to process

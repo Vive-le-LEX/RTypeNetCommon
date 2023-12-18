@@ -69,7 +69,7 @@ namespace RType {
             void Disconnect() {
                 if (IsConnected()) {
                     currentTcpConnection->Disconnect();
-                    //TODO: UDP
+                    currentUdpConnection->Disconnect();
                 }
 
                 context.stop();
@@ -77,6 +77,7 @@ namespace RType {
                     contextThread.join();
 
                 currentTcpConnection.release();
+                currentUdpConnection.release();
             }
 
             /*
@@ -103,8 +104,12 @@ namespace RType {
                 @brief Retrieve the queue of messages from the server
                 @return The queue of messages from the server
             */
-            TsQueue<owned_message<MessageType, TcpConnection<MessageType>>>& IncomingTcp() {
+            TsQueue<owned_message<MessageType, TcpConnection<MessageType>>>& IncomingTcpMessages() {
                 return incomingTcpMessages;
+            }
+
+            TsQueue<owned_message<MessageType, UdpConnection<MessageType>>>& IncomingUdpMessages() {
+                return incomingUdpMessages;
             }
 
         protected:
