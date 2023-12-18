@@ -106,7 +106,7 @@ namespace RType {
                                         [this](std::error_code ec, std::size_t length) {
                                             (void)length;
                                             if (!ec) {
-                                                if (outgoingMessages.body.size() > 0) {
+                                                if (outgoingMessages.front().body.size() > 0) {
                                                     WriteBody();
                                                 } else {
                                                     outgoingMessages.pop_front();
