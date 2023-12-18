@@ -53,7 +53,8 @@ namespace RType {
 
             bool ConnectToRoom() {
                 try {
-                    currentUdpConnection = std::make_unique<UdpConnection<MessageType>>(owner::client, context, asio::ip::udp::endpoint(asio::ip::udp::v4(), _port), incomingUdpMessages);
+                    auto endpoint = asio::ip::udp::endpoint(_host, _port);
+                    currentUdpConnection = std::make_unique<UdpConnection<MessageType>>(owner::client, context, endpoint, incomingUdpMessages);
 
                     std::cout << "Connecting to room" << std::endl;
                 } catch (std::exception& e) {

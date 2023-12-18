@@ -32,10 +32,10 @@ namespace RType {
             {
                 connectionOwner = parent;
                 udpSocket.open(udpEndpoint.protocol());
-
                 AsyncTimer::Construct();
                 if (connectionOwner == owner::server) {
                     udpSocket.bind(udpEndpoint);
+                    std::cout << "UDP Socket port: " << udpSocket.local_endpoint().port() << std::endl;
 
                     handshakeOut = uint64_t(std::chrono::system_clock::now().time_since_epoch().count());
 
@@ -44,6 +44,7 @@ namespace RType {
                     WriteValidation();
                 } else {
                     udpSocket.bind(asio::ip::udp::endpoint(udpEndpoint.protocol(), 0));
+                    std::cout << "UDP Socket port: " << udpSocket.local_endpoint().port() << std::endl;
 
                     // Connection is Client -> Server, so we have nothing to define,
                     handshakeIn = 0;
