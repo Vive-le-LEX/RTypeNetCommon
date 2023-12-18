@@ -102,7 +102,7 @@ namespace RType {
             }
 
             void WriteHeader() {
-                udpSocket.async_send_to(asio::buffer(&outgoingMessages.header, sizeof(message_header<MessageType>)), udpEndpoint,
+                udpSocket.async_send_to(asio::buffer(&outgoingMessages.front().header, sizeof(message_header<MessageType>)), udpEndpoint,
                                         [this](std::error_code ec, std::size_t length) {
                                             (void)length;
                                             if (!ec) {
@@ -122,7 +122,7 @@ namespace RType {
             }
 
             void WriteBody() {
-                udpSocket.async_send_to(asio::buffer(outgoingMessages.body.data(), outgoingMessages.body.size()), udpEndpoint,
+                udpSocket.async_send_to(asio::buffer(outgoingMessages.front().body.data(), outgoingMessages.body.size()), udpEndpoint,
                                         [this](std::error_code ec, std::size_t length) {
                                             (void)length;
                                             if (!ec) {
