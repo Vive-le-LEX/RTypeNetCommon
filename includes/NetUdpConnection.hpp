@@ -32,20 +32,24 @@ namespace RType {
             {
                 connectionOwner = parent;
                 udpSocket.open(udpEndpoint.protocol());
-                if (connectionOwner == owner::server) {
-                    udpSocket.bind(udpEndpoint);
-                } else {
-                    udpSocket.bind(asio::ip::udp::endpoint(udpEndpoint.protocol(), 0));
-                }
+
                 AsyncTimer::Construct();
                 if (connectionOwner == owner::server) {
+                    udpSocket.bind(udpEndpoint);
+
                     handshakeOut = uint64_t(std::chrono::system_clock::now().time_since_epoch().count());
 
                     handshakeCheck = scramble(handshakeOut);
+
+                    WriteValidation();
                 } else {
+                    udpSocket.bind(asio::ip::udp::endpoint(udpEndpoint.protocol(), 0));
+
                     // Connection is Client -> Server, so we have nothing to define,
                     handshakeIn = 0;
                     handshakeOut = 0;
+
+                    ReadValidation();
                 }
             }
 
@@ -183,7 +187,7 @@ namespace RType {
                                         });
             }
 
-            virtual void ReadValidation(RType::net::ServerInterface<MessageType>* server = nullptr) final {
+            void ReadValidation(RType::net::ServerInterface<MessageType>* server = nullptr) {
                 if (connectionOwner == owner::server) {
                     AsyncTimer::GetInstance()->addTimer(id, 1000, [this, server]() {
                         std::cout << "Client Timed out while reading validation" << std::endl;
