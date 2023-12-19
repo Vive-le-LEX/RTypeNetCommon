@@ -31,6 +31,8 @@ set(SRC
 add_executable(${PROJECT_NAME} ${SRC} ${SRC_MAIN})
 
 target_link_libraries(${PROJECT_NAME} PUBLIC asio)
+target_link_libraries(${PROJECT_NAME} PUBLIC stduuid)
+
 
 if(IS_TESTING)
     include(CTest)
@@ -47,6 +49,7 @@ if(IS_TESTING)
     )
 
     target_link_libraries(${TEST_PROJECT_NAME} PUBLIC asio)
+    target_link_libraries(${TEST_PROJECT_NAME} PUBLIC stduuid)
 
     target_link_libraries(${TEST_PROJECT_NAME}
         PRIVATE

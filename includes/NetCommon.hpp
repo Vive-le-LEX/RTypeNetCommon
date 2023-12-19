@@ -13,6 +13,8 @@
 
 #include <sys/ioctl.h>
 #include <unistd.h>
+#define UUID_SYSTEM_GENERATOR
+#include <uuid.h>
 
 #include <algorithm>
 #include <chrono>
@@ -98,5 +100,5 @@ namespace RType {
             tcp,
             udp
         };
-    }
+    }  // namespace net
 }  // namespace RType

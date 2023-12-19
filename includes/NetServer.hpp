@@ -15,15 +15,11 @@
 #include "NetMessage.hpp"
 #include "NetTcpConnection.hpp"
 #include "NetTsqueue.hpp"
-#include "NetUdpConnection.hpp"
 
 namespace RType {
     namespace net {
         template <typename T>
         class TcpConnection;
-
-        template <typename T>
-        class UdpConnection;
 
         template <typename MessageType>
         class ServerInterface {
@@ -47,7 +43,6 @@ namespace RType {
             bool Start() {
                 try {
                     WaitForClientConnection();
-                    udpConnection = std::make_shared<UdpConnection<MessageType>>(owner::server, asioContext, asio::ip::udp::endpoint(asio::ip::udp::v4(), port), incomingUdpMessages);
                     threadContext = std::thread([this]() { asioContext.run(); });
                 } catch (std::exception& e) {
                     std::cerr << "[SERVER] Exception: " << e.what() << "\n";
@@ -146,14 +141,6 @@ namespace RType {
                         std::remove(activeTcpConnections.begin(), activeTcpConnections.end(), nullptr), activeTcpConnections.end());
             }
 
-            void SendUdpMessage(const message<MessageType>& msg) {
-                if (udpConnection && udpConnection->IsConnected()) {
-                    udpConnection->Send(msg);
-                } else {
-                    std::cout << "[SERVER] UDP Connection is not connected" << std::endl;
-                }
-            }
-
             /*
                 @brief Force update the server
                 @param maxMessages The maximum number of messages to process
@@ -200,10 +187,8 @@ namespace RType {
             uint16_t port;
 
             TsQueue<owned_message<MessageType, TcpConnection<MessageType>>> incomingTcpMessages;
-            TsQueue<owned_message<MessageType, UdpConnection<MessageType>>> incomingUdpMessages;
 
             std::deque<std::shared_ptr<TcpConnection<MessageType>>> activeTcpConnections;
-            std::shared_ptr<UdpConnection<MessageType>> udpConnection;
 
             asio::io_context asioContext;
             std::thread threadContext;

@@ -34,3 +34,23 @@ add_library(asio INTERFACE)
 target_include_directories(asio INTERFACE ${asio_SOURCE_DIR}/asio/include)
 find_package(Threads)
 target_link_libraries(asio INTERFACE Threads::Threads)
+
+message(STATUS "Downloading and extracting stduuid library sources. This will take some time...")
+FetchContent_Declare(
+    stduuid
+    GIT_REPOSITORY git@github.com:mariusbancila/stduuid.git
+    GIT_TAG master
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+)
+
+FetchContent_GetProperties(stduuid)
+
+if(NOT stduuid_POPULATED)
+    FetchContent_Populate(stduuid)
+endif()
+
+add_library(stduuid INTERFACE)
+
+target_include_directories(stduuid INTERFACE ${stduuid_SOURCE_DIR}/include)
+target_include_directories(stduuid INTERFACE ${stduuid_SOURCE_DIR}/gsl)
