@@ -14,7 +14,6 @@ include(external/FindDependencies.cmake)
 
 add_library(${PROJECT_NAME} INTERFACE)
 
-target_link_libraries(${PROJECT_NAME} INTERFACE asio)
-target_link_libraries(${PROJECT_NAME} INTERFACE stduuid)
+target_link_libraries(${PROJECT_NAME} INTERFACE asio stduuid)
 
 target_include_directories(${PROJECT_NAME} INTERFACE ./includes)

@@ -17,8 +17,8 @@ if(NOT STDUUID_LIB)
 
     add_library(stduuid INTERFACE)
 
-    target_include_directories(stduuid INTERFACE ${stduuid_SOURCE_DIR}/include)
-    target_include_directories(stduuid INTERFACE ${stduuid_SOURCE_DIR}/gsl)
+    target_include_directories(${PROJECT_NAME} INTERFACE ${stduuid_SOURCE_DIR}/include)
+    target_include_directories(${PROJECT_NAME} INTERFACE ${stduuid_SOURCE_DIR}/gsl)
 else()
     message(STATUS "Stduuid library found at ${STDUUID_LIB}")
 endif()
