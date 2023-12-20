@@ -11,8 +11,6 @@
 
 #pragma once
 
-#include <sys/ioctl.h>
-#include <unistd.h>
 #define UUID_SYSTEM_GENERATOR
 #include <uuid.h>
 
@@ -39,6 +37,8 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
 #endif
 
 #define ASIO_STANDALONE
@@ -49,7 +49,9 @@
 //----------------------------------------------------------------
 // Utilities
 //----------------------------------------------------------------
-
+#ifdef _WIN32
+inline std::string getIp(void) { return ""; }
+#elif __linux__
 inline std::string getIp(void) {
     int fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
 
@@ -63,6 +65,7 @@ inline std::string getIp(void) {
 
     return ip;
 }
+#endif
 
 class AsyncTimer : public Singleton<AsyncTimer> {
    public:
