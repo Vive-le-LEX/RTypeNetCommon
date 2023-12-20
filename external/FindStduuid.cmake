@@ -9,16 +9,8 @@ if(NOT STDUUID_LIB)
         BUILD_COMMAND ""
     )
 
-    FetchContent_GetProperties(stduuid)
+    FetchContent_MakeAvailable(stduuid)
 
-    if(NOT stduuid_POPULATED)
-        FetchContent_Populate(stduuid)
-    endif()
-
-    add_library(stduuid INTERFACE)
-
-    target_include_directories(${PROJECT_NAME} INTERFACE ${stduuid_SOURCE_DIR}/include)
-    target_include_directories(${PROJECT_NAME} INTERFACE ${stduuid_SOURCE_DIR}/gsl)
 else()
     message(STATUS "Stduuid library found at ${STDUUID_LIB}")
 endif()

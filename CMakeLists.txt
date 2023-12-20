@@ -17,3 +17,6 @@ add_library(${PROJECT_NAME} INTERFACE)
 target_link_libraries(${PROJECT_NAME} INTERFACE asio stduuid)
 
 target_include_directories(${PROJECT_NAME} INTERFACE ./includes)
+target_include_directories(${PROJECT_NAME} INTERFACE ${stduuid_SOURCE_DIR}/include)
+target_include_directories(${PROJECT_NAME} INTERFACE ${stduuid_SOURCE_DIR}/gsl)
+target_include_directories(${PROJECT_NAME} INTERFACE ${asio_SOURCE_DIR}/asio/include)
