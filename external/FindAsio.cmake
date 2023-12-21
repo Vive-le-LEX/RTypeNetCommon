@@ -11,12 +11,14 @@ if(NOT ASIO_LIB)
     )
 
     FetchContent_GetProperties(asio)
-
     if(NOT asio_POPULATED)
         FetchContent_Populate(asio)
     endif()
 
     add_library(asio INTERFACE)
+
+
+    set (testaa ${asio_SOURCE_DIR}/asio/include)
 
     find_package(Threads)
     target_link_libraries(asio INTERFACE Threads::Threads)
