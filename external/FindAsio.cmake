@@ -18,7 +18,7 @@ if(NOT ASIO_LIB)
 
     add_library(asio INTERFACE)
 
-    set(asio_SOURCE_DIR CACHE PATH${asio_SOURCE_DIR}/asio/include)
+    set(asio_SOURCE_DIR "${asio_SOURCE_DIR}" CACHE PATH "Path to ASIO source directory" FORCE)
 
     find_package(Threads)
     target_link_libraries(asio INTERFACE Threads::Threads)
