@@ -18,9 +18,9 @@ namespace RType {
     namespace net {
 
         template <typename MessageType>
-        class UdpServer : public std::enable_shared_from_this<UdpServer<MessageType>> {
+        class UdpServerInterface : public std::enable_shared_from_this<UdpServerInterface<MessageType>> {
            public:
-            UdpServer(asio::io_context& context, uint16_t port) : _context(context),
+            UdpServerInterface(asio::io_context& context, uint16_t port) : _context(context),
                                                                   _port(port),
                                                                   _socket(context),
                                                                   _bytesReceived(0),
@@ -30,6 +30,9 @@ namespace RType {
                                                                   _datagramsSent(0)
             {
                 _endpoint = asio::ip::udp::endpoint(asio::ip::udp::v4(), port);
+                if (_port == 0) {
+                    _port = _endpoint.port();
+                }
             }
 
             bool Start() {

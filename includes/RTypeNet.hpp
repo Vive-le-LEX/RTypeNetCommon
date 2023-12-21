@@ -13,7 +13,8 @@
 
 #include "NetClient.hpp"
 #include "NetCommon.hpp"
-#include "NetTcpConnection.hpp"
 #include "NetMessage.hpp"
 #include "NetServer.hpp"
+#include "NetTcpConnection.hpp"
 #include "NetTsqueue.hpp"
+#include "NetUdpServer.hpp"
