@@ -73,7 +73,7 @@ namespace RType {
                                               }
                                           }
                                       } else {
-                                          std::cout << "[Error][" << this->id << "] Write header failed: " << ec.message() << std::endl;
+                                          std::cout << "[Error][" << this->id_ << "] Write header failed: " << ec.message() << std::endl;
                                           this->tcpSocket.close();
                                       }
                                   });
@@ -90,7 +90,7 @@ namespace RType {
                                               WriteHeader();
                                           }
                                       } else {
-                                          std::cout << "[Error][" << this->id << "] Write body failed: " << ec.message() << std::endl;
+                                          std::cout << "[Error][" << this->id_ << "] Write body failed: " << ec.message() << std::endl;
                                           this->tcpSocket.close();
                                       }
                                   });
@@ -109,7 +109,7 @@ namespace RType {
                                              this->AddToIncomingMessageQueue();
                                          }
                                      } else {
-                                         std::cout << "[Error][" << this->id << "] Read header failed: " << ec.message() << std::endl;
+                                         std::cout << "[Error][" << this->id_ << "] Read header failed: " << ec.message() << std::endl;
                                          this->tcpSocket.close();
                                      }
                                  });
@@ -123,7 +123,7 @@ namespace RType {
                                      if (!ec) {
                                          this->AddToIncomingMessageQueue();
                                      } else {
-                                         std::cout << "[Error][" << this->id << "] Read body failed: " << ec.message() << std::endl;
+                                         std::cout << "[Error][" << this->id_ << "] Read body failed: " << ec.message() << std::endl;
                                          this->tcpSocket.close();
                                      }
                                  });
@@ -139,7 +139,7 @@ namespace RType {
                                               this->ReadHeader();
                                           }
                                       } else {
-                                          std::cout << "[Error][" << this->id << "] Write validation failed: " << ec.message() << std::endl;
+                                          std::cout << "[Error][" << this->id_ << "] Write validation failed: " << ec.message() << std::endl;
                                           this->tcpSocket.close();
                                       }
                                   });
@@ -147,7 +147,7 @@ namespace RType {
 
             virtual void ReadValidation(RType::net::ServerInterface<MessageType>* server = nullptr) final {
                 if (this->connectionOwner_ == owner::server) {
-                    AsyncTimer::GetInstance()->addTimer(this->id, 1000, [this, server]() {
+                    AsyncTimer::GetInstance()->addTimer(this->id_, 1000, [this, server]() {
                         std::cout << "Client Timed out while reading validation" << std::endl;
                         this->tcpSocket.close();
                     });
@@ -162,7 +162,7 @@ namespace RType {
 
                                              // Compare sent data to actual solution
                                              if (this->handshakeIn_ == this->handshakeCheck_) {
-                                                 AsyncTimer::GetInstance()->removeTimer(this->id);
+                                                 AsyncTimer::GetInstance()->removeTimer(this->id_);
                                                  // Client has provided valid solution, so allow it to connect properly
                                                  std::cout << "Client Validated" << std::endl;
                                                  server->OnClientValidated(this->shared_from_this());
