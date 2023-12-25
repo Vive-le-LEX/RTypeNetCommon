@@ -70,26 +70,26 @@ inline std::string getIp(void) {
 class AsyncTimer : public Singleton<AsyncTimer> {
    public:
     void addTimer(uint32_t id, uint32_t ms, std::function<void()> callback) {
-        _callbacks[id] = std::move(callback);
+        callbacks_[id] = std::move(callback);
         std::thread([this, id, ms]() {
             std::this_thread::sleep_for(std::chrono::milliseconds(ms));
-            if (_callbacks.find(id) != _callbacks.end()) {
-                _callbacks[id]();
-                _callbacks.erase(id);
+            if (callbacks_.find(id) != callbacks_.end()) {
+                callbacks_[id]();
+                callbacks_.erase(id);
             }
         }).detach();
     }
 
     void removeTimer(uint32_t id) {
-        if (_callbacks.find(id) != _callbacks.end())
-            _callbacks.erase(id);
+        if (callbacks_.find(id) != callbacks_.end())
+            callbacks_.erase(id);
     }
 
    private:
     AsyncTimer() = default;
     friend class Singleton<AsyncTimer>;
 
-    std::unordered_map<uint32_t, std::function<void()> > _callbacks;
+    std::unordered_map<uint32_t, std::function<void()> > callbacks_;
 };
 
 namespace RType {
@@ -99,9 +99,5 @@ namespace RType {
             client
         };
 
-        enum class connection_type {
-            tcp,
-            udp
-        };
     }  // namespace net
 }  // namespace RType

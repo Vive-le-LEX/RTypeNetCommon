@@ -19,17 +19,17 @@
 namespace RType {
     namespace net {
         template <typename MessageType>
-        class UdpClient {
+        class UdpClientInterface {
            public:
-            UdpClient(asio::io_context& context, std::string host, uint16_t port) : _context(context),
-                                                                                    _port(port),
-                                                                                    _host(std::move(host)),
-                                                                                    _socket(context),
-                                                                                    _bytesSending(0),
-                                                                                    _bytesSent(0),
-                                                                                    _bytesReceived(0),
-                                                                                    _datagramsSent(0),
-                                                                                    _datagramsReceived(0)
+            UdpClientInterface(asio::io_context& context, std::string host, uint16_t port) : context_(context),
+                                                                                    port_(port),
+                                                                                    host_(std::move(host)),
+                                                                                    socket_(context),
+                                                                                    bytesSending_(0),
+                                                                                    bytesSent_(0),
+                                                                                    bytesReceived_(0),
+                                                                                    datagramsSent_(0),
+                                                                                    datagramsReceived_(0)
 
             {
                 std::random_device rd;
@@ -38,17 +38,17 @@ namespace RType {
                 std::seed_seq seq(std::begin(seed_data), std::end(seed_data));
                 std::mt19937 generator(seq);
                 uuids::uuid_random_generator gen{generator};
-                _uuid = gen();
+                uuid_ = gen();
             }
 
             bool Connect() {
-                assert(!_host.empty() && "Server address must not be empty!");
-                if (_host.empty()) {
+                assert(!host_.empty() && "Server address must not be empty!");
+                if (host_.empty()) {
                     return false;
                 }
 
-                assert((_port > 0) && "Server port number must be valid!");
-                if (_port <= 0) {
+                assert((port_ > 0) && "Server port number must be valid!");
+                if (port_ <= 0) {
                     return false;
                 }
 
@@ -56,21 +56,21 @@ namespace RType {
                     return false;
                 }
 
-                _endpoint = asio::ip::udp::endpoint(asio::ip::make_address(_host), (unsigned short)_port);
-                _socket.open(_endpoint.protocol());
+                endpoint_ = asio::ip::udp::endpoint(asio::ip::make_address(host_), (unsigned short)port_);
+                socket_.open(endpoint_.protocol());
 
-                _socket.bind(asio::ip::udp::endpoint(_endpoint.protocol(), 0));
+                socket_.bind(asio::ip::udp::endpoint(endpoint_.protocol(), 0));
 
-                _receiveBuffer.resize(1024);
-                _receiveBufferLimit = 4096;
+                receiveBuffer_.resize(1024);
+                receiveBufferLimit_ = 4096;
 
-                _bytesSending = 0;
-                _bytesSent = 0;
-                _bytesReceived = 0;
-                _datagramsSent = 0;
-                _datagramsReceived = 0;
+                bytesSending_ = 0;
+                bytesSent_ = 0;
+                bytesReceived_ = 0;
+                datagramsSent_ = 0;
+                datagramsReceived_ = 0;
 
-                _connected = true;
+                connected_ = true;
 
                 onConnected();
 
@@ -91,7 +91,7 @@ namespace RType {
                 // Post the connect handler
                 auto self(this->shared_from_this());
                 auto connect_handler = [this, self]() { Connect(); };
-                _context.post(connect_handler);
+                context_.post(connect_handler);
 
                 return true;
             }
@@ -99,7 +99,7 @@ namespace RType {
             bool Disconnect() { return DisconnectInternal(); }
 
             size_t Send(const message<MessageType>& msg) {
-                return Send(_endpoint, msg);
+                return Send(endpoint_, msg);
             }
 
             size_t Send(const asio::ip::udp::endpoint& endpoint, const message<MessageType>& msg) {
@@ -118,13 +118,13 @@ namespace RType {
 
                 asio::error_code ec;
 
-                tempOutgoingMessage = msg;
+                tempOutgoingMessage_ = msg;
 
-                size_t sent = _socket.send_to(asio::buffer(&tempOutgoingMessage.header, sizeof(message_header<MessageType>)), endpoint, 0, ec);
+                size_t sent = socket_.send_to(asio::buffer(&tempOutgoingMessage_.header, sizeof(message_header<MessageType>)), endpoint, 0, ec);
 
                 if (sent > 0) {
-                    ++_datagramsSent;
-                    _bytesSent += sent;
+                    ++datagramsSent_;
+                    bytesSent_ += sent;
 
                     onSent(endpoint, sent);
                 }
@@ -138,11 +138,11 @@ namespace RType {
             }
 
             bool SendAsync(const message<MessageType>& msg) {
-                return SendAsync(_endpoint, msg);
+                return SendAsync(endpoint_, msg);
             }
 
             bool SendAsync(const asio::ip::udp::endpoint& endpoint, const message<MessageType>& msg) {
-                if (_sending) {
+                if (sending_) {
                     return false;
                 }
 
@@ -159,24 +159,24 @@ namespace RType {
                     return false;
                 }
 
-                _sending = true;
+                sending_ = true;
 
-                _bytesSending = msg.size();
+                bytesSending_ = msg.size();
 
                 auto self = this->shared_from_this();
                 auto sendHandler = [this, self](std::error_code ec, size_t sent) {
-                    _sending = false;
+                    sending_ = false;
 
                     if (!this->IsStarted()) {
                         return;
                     }
 
                     if (sent > 0) {
-                        _bytesSending = 0;
-                        ++_datagramsSent;
-                        _bytesSent += sent;
+                        bytesSending_ = 0;
+                        ++datagramsSent_;
+                        bytesSent_ += sent;
 
-                        onSent(_endpoint, sent);
+                        onSent(endpoint_, sent);
                     }
 
                     if (ec) {
@@ -185,15 +185,15 @@ namespace RType {
                     }
                 };
 
-                tempOutgoingMessage = msg;
+                tempOutgoingMessage_ = msg;
 
-                _socket.async_send_to(asio::buffer(&tempOutgoingMessage.header, sizeof(message_header<MessageType>)), endpoint, 0, sendHandler);
+                socket_.async_send_to(asio::buffer(&tempOutgoingMessage_.header, sizeof(message_header<MessageType>)), endpoint, 0, sendHandler);
 
                 return true;
             }
 
             size_t Receive(void* buffer, size_t size) {
-                return Receive(_endpoint, buffer, size);
+                return Receive(endpoint_, buffer, size);
             }
 
             //! Receive datagram from the given endpoint (synchronous)
@@ -220,10 +220,10 @@ namespace RType {
 
                 asio::error_code ec;
 
-                size_t received = _socket.receive_from(asio::buffer(buffer, size), endpoint, 0, ec);
+                size_t received = socket_.receive_from(asio::buffer(buffer, size), endpoint, 0, ec);
 
-                ++_datagramsReceived;
-                _bytesReceived += received;
+                ++datagramsReceived_;
+                bytesReceived_ += received;
 
                 onReceived(endpoint, buffer, received);
 
@@ -237,7 +237,7 @@ namespace RType {
 
             //! Receive datagram from the client (asynchronous)
             void ReceiveAsync() {
-                if (_receiving) {
+                if (receiving_) {
                     std::cout << "[UDP] Server is already receiving a message" << std::endl;
                     return;
                 }
@@ -247,10 +247,10 @@ namespace RType {
                     return;
                 }
 
-                _receiving = true;
+                receiving_ = true;
                 auto self = this->shared_from_this();
                 auto receiveHandler = [this, self](std::error_code ec, size_t received) {
-                    _receiving = false;
+                    receiving_ = false;
 
                     if (!IsConnected())
                         return;
@@ -263,27 +263,27 @@ namespace RType {
                         return;
                     }
 
-                    ++_datagramsReceived;
-                    _bytesReceived += received;
+                    ++datagramsReceived_;
+                    bytesReceived_ += received;
 
-                    onReceived(_endpoint, _receiveBuffer.data(), received);
+                    onReceived(endpoint_, receiveBuffer_.data(), received);
 
-                    if (_receiveBuffer.size() == received) {
+                    if (receiveBuffer_.size() == received) {
                         // Check the reception buffer limit
-                        if (((2 * received) > _receiveBufferLimit) && (_receiveBufferLimit > 0)) {
+                        if (((2 * received) > receiveBufferLimit_) && (receiveBufferLimit_ > 0)) {
                             SendError(asio::error::no_buffer_space);
                             DisconnectInternalAsync(true);
                             return;
                         }
 
-                        _receiveBuffer.resize(2 * received);
+                        receiveBuffer_.resize(2 * received);
                     }
                 };
 
-                _socket.async_receive_from(asio::buffer(_receiveBuffer.data(), _receiveBuffer.size()), _endpoint, receiveHandler);
+                socket_.async_receive_from(asio::buffer(receiveBuffer_.data(), receiveBuffer_.size()), endpoint_, receiveHandler);
             }
 
-            [[nodiscard]] bool IsConnected() const noexcept { return _connected; }
+            [[nodiscard]] bool IsConnected() const noexcept { return connected_; }
 
            protected:
             //! Handle client connected notification
@@ -322,32 +322,32 @@ namespace RType {
             virtual void onError(int error, const std::string& category, const std::string& message) = 0;
 
            private:
-            uuids::uuid _uuid;
+            uuids::uuid uuid_;
 
-            uint16_t _port;
-            std::string _host;
+            uint16_t port_;
+            std::string host_;
 
-            asio::io_context& _context;
+            asio::io_context& context_;
 
-            asio::ip::udp::socket _socket;
-            asio::ip::udp::endpoint _endpoint;
-            std::atomic<bool> _resolving = false;
-            std::atomic<bool> _connected = false;
+            asio::ip::udp::socket socket_;
+            asio::ip::udp::endpoint endpoint_;
+            std::atomic<bool> resolving_ = false;
+            std::atomic<bool> connected_ = false;
 
-            std::vector<uint8_t> _receiveBuffer;
-            size_t _receiveBufferLimit{0};
+            std::vector<uint8_t> receiveBuffer_;
+            size_t receiveBufferLimit_{0};
 
-            message<MessageType> tempOutgoingMessage;
+            message<MessageType> tempOutgoingMessage_;
 
-            bool _sending = false;
-            bool _receiving = false;
+            bool sending_ = false;
+            bool receiving_ = false;
 
             // Client statistic
-            uint64_t _bytesSending;
-            uint64_t _bytesSent;
-            uint64_t _bytesReceived;
-            uint64_t _datagramsSent;
-            uint64_t _datagramsReceived;
+            uint64_t bytesSending_;
+            uint64_t bytesSent_;
+            uint64_t bytesReceived_;
+            uint64_t datagramsSent_;
+            uint64_t datagramsReceived_;
 
             //! Disconnect the client (internal synchronous)
             bool DisconnectInternal() {
@@ -355,15 +355,15 @@ namespace RType {
                     return false;
 
                 // Close the client socket
-                _socket.close();
+                socket_.close();
 
                 // Update the connected flag
-                _resolving = false;
-                _connected = false;
+                resolving_ = false;
+                connected_ = false;
 
                 // Update sending/receiving flags
-                _receiving = false;
-                _sending = false;
+                receiving_ = false;
+                sending_ = false;
 
                 // Clear send/receive buffers
                 ClearBuffers();
@@ -375,26 +375,27 @@ namespace RType {
             }
             //! Disconnect the client (internal asynchronous)
             bool DisconnectInternalAsync(bool dispatch) {
+                (void)dispatch;
                 if (!IsConnected())
                     return false;
 
                 asio::error_code ec;
 
                 // Cancel the client socket
-                (void)_socket.cancel(ec);
+                (void)socket_.cancel(ec);
 
                 // Dispatch or post the disconnect handler
                 auto self(this->shared_from_this());
                 auto disconnect_handler = [this, self]() { DisconnectInternal(); };
-                _context.post(disconnect_handler);
+                context_.post(disconnect_handler);
                 return true;
             }
 
             //! Clear send/receive buffers
             void ClearBuffers() {
-                _receiveBuffer.clear();
+                receiveBuffer_.clear();
 
-                _bytesSending = 0;
+                bytesSending_ = 0;
             }
 
             //! Send error notification

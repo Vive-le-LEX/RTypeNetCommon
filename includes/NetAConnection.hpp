@@ -23,62 +23,46 @@ namespace RType {
         template <typename T>
         class TcpConnection;
 
-        template <typename T>
-        class UdpConnection;
-
         template <typename MessageType>
         class AConnection {
            public:
             AConnection(owner parent,
                         asio::io_context& context,
                         asio::ip::tcp::socket socket,
-                        TsQueue<owned_message<MessageType, TcpConnection<MessageType>>>& incomingMessages) : asioContext(context),
+                        TsQueue<owned_message<MessageType, TcpConnection<MessageType>>>& incomingMessages) : asioContext_(context),
                                                                                                              tcpSocket(std::move(socket)),
-                                                                                                             incomingTcpMessages(incomingMessages) {
-                connectionOwner = parent;
-                connectionType = connection_type::tcp;
+                                                                                                             incomingTcpMessages_(incomingMessages) {
+                connectionOwner_ = parent;
                 AsyncTimer::Construct();
-                if (connectionOwner == owner::server) {
-                    handshakeOut = uint64_t(std::chrono::system_clock::now().time_since_epoch().count());
+                if (connectionOwner_ == owner::server) {
+                    handshakeOut_ = uint64_t(std::chrono::system_clock::now().time_since_epoch().count());
 
-                    handshakeCheck = scramble(handshakeOut);
+                    handshakeCheck_ = scramble(handshakeOut_);
                 } else {
                     // Connection is Client -> Server, so we have nothing to define,
-                    handshakeIn = 0;
-                    handshakeOut = 0;
+                    handshakeIn_ = 0;
+                    handshakeOut_ = 0;
                 }
             }
 
             virtual ~AConnection() = default;
 
             [[nodiscard]] uint32_t GetID() const {
-                return id;
-            }
-
-            [[nodiscard]] connection_type GetType() const {
-                return connectionType;
+                return id_;
             }
 
             [[nodiscard]] owner GetOwner() const {
-                return connectionOwner;
+                return connectionOwner_;
             }
 
             void ConnectToClient(RType::net::ServerInterface<MessageType>* server, uint32_t uid = 0) {
-                if (connectionOwner == owner::server) {
-                    if (connectionType == connection_type::tcp) {
-                        if (tcpSocket.is_open()) {
-                            id = uid;
+                if (connectionOwner_ == owner::server) {
+                    if (tcpSocket.is_open()) {
+                        id_ = uid;
 
-                            WriteValidation();
+                        WriteValidation();
 
-                            ReadValidation(server);
-                        }
-                    } else {
-                        if (udpSocket->is_open()) {
-                            id = uid;
-
-                            //TODO: UDP
-                        }
+                        ReadValidation(server);
                     }
                 }
             }
@@ -87,15 +71,9 @@ namespace RType {
             */
             void Disconnect() {
                 if (IsConnected()) {
-                    if (connectionType == connection_type::tcp) {
-                        asio::post(asioContext, [this]() {
-                            tcpSocket.close();
-                        });
-                    } else {
-                        asio::post(asioContext, [this]() {
-                            udpSocket->close();
-                        });
-                    }
+                    asio::post(asioContext_, [this]() {
+                        tcpSocket.close();
+                    });
                 }
             }
 
@@ -104,10 +82,7 @@ namespace RType {
                 @return True if the client is connected to a server, false otherwise
             */
             [[nodiscard]] bool IsConnected() const {
-                if (connectionType == connection_type::tcp)
                     return tcpSocket.is_open();
-                else
-                    return udpSocket->is_open();
             }
 
             /*
@@ -131,7 +106,7 @@ namespace RType {
 
             virtual void ReadValidation(RType::net::ServerInterface<MessageType>* server = nullptr) = 0;
 
-        protected:
+           protected:
             virtual void AddToIncomingMessageQueue() = 0;
 
             uint64_t scramble(uint64_t input) {
@@ -141,21 +116,19 @@ namespace RType {
             }
 
            protected:
-            owner connectionOwner;
-            connection_type connectionType;
+            owner connectionOwner_;
 
-            asio::io_context& asioContext;
+            asio::io_context& asioContext_;
             asio::ip::tcp::socket tcpSocket;
-            std::unique_ptr<asio::ip::udp::socket> udpSocket;
 
-            TsQueue<message<MessageType>> outgoingMessages;
-            TsQueue<owned_message<MessageType, TcpConnection<MessageType>>>& incomingTcpMessages;
-            message<MessageType> tempIncomingMessage;
+            TsQueue<message<MessageType>> outgoingMessages_;
+            TsQueue<owned_message<MessageType, TcpConnection<MessageType>>>& incomingTcpMessages_;
+            message<MessageType> tempIncomingMessage_;
 
-            uint64_t handshakeOut = 0;
-            uint64_t handshakeIn = 0;
-            uint64_t handshakeCheck = 0;
-            uint32_t id = 0;
+            uint64_t handshakeOut_ = 0;
+            uint64_t handshakeIn_ = 0;
+            uint64_t handshakeCheck_ = 0;
+            uint32_t id_ = 0;
         };
     }  // namespace net
 }  // namespace RType

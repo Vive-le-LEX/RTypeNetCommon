@@ -34,29 +34,16 @@ namespace RType {
             */
             bool ConnectToServer(const std::string& host, const uint16_t port) {
                 try {
-                    _host = host;
-                    _port = port;
-                    asio::ip::tcp::resolver resolver(context);
+                    host_ = host;
+                    port_ = port;
+                    asio::ip::tcp::resolver resolver(context_);
                     asio::ip::tcp::resolver::results_type endpoints = resolver.resolve(host, std::to_string(port));
 
-                    currentTcpConnection = std::make_unique<TcpConnection<MessageType>>(owner::client, context, asio::ip::tcp::socket(context), incomingTcpMessages);
+                    currentTcpConnection_ = std::make_unique<TcpConnection<MessageType>>(owner::client, context_, asio::ip::tcp::socket(context_), incomingTcpMessages_);
 
-                    currentTcpConnection->ConnectToServer(endpoints);
+                    currentTcpConnection_->ConnectToServer(endpoints);
 
-                    contextThread = std::thread([this]() { context.run(); });
-                } catch (std::exception& e) {
-                    std::cerr << "Client Exception: " << e.what() << "\n";
-                    return false;
-                }
-                return true;
-            }
-
-            bool ConnectToRoom() {
-                try {
-                    auto endpoint = asio::ip::udp::endpoint(_host, _port);
-                    currentUdpConnection = std::make_unique<UdpConnection<MessageType>>(owner::client, context, endpoint, incomingUdpMessages);
-
-                    std::cout << "Connecting to room" << std::endl;
+                    contextThread_ = std::thread([this]() { context_.run(); });
                 } catch (std::exception& e) {
                     std::cerr << "Client Exception: " << e.what() << "\n";
                     return false;
@@ -68,17 +55,16 @@ namespace RType {
                 @brief Disconnect from the server
             */
             void Disconnect() {
-                if (IsConnected()) {
-                    currentTcpConnection->Disconnect();
-                    currentUdpConnection->Disconnect();
+                if (this->IsConnected()) {
+                    currentTcpConnection_->Disconnect();
                 }
 
-                context.stop();
-                if (contextThread.joinable())
-                    contextThread.join();
+                context_.stop();
+                if (contextThread_.joinable()) {
+                    contextThread_.join();
+                }
 
-                currentTcpConnection.release();
-                currentUdpConnection.release();
+                currentTcpConnection_.release();
             }
 
             /*
@@ -86,8 +72,8 @@ namespace RType {
                 @return True if the client is connected to a server, false otherwise
             */
             bool IsConnected() {
-                if (currentTcpConnection)
-                    return currentTcpConnection->IsConnected();
+                if (currentTcpConnection_)
+                    return currentTcpConnection_->IsConnected();
                 else
                     return false;
             }
@@ -97,8 +83,8 @@ namespace RType {
                 @param msg The message to send
             */
             void Send(const message<MessageType>& msg) {
-                if (IsConnected())
-                    currentTcpConnection->Send(msg);
+                if (this->IsConnected())
+                    currentTcpConnection_->Send(msg);
             }
 
             /*
@@ -106,26 +92,20 @@ namespace RType {
                 @return The queue of messages from the server
             */
             TsQueue<owned_message<MessageType, TcpConnection<MessageType>>>& IncomingTcpMessages() {
-                return incomingTcpMessages;
-            }
-
-            TsQueue<owned_message<MessageType, UdpConnection<MessageType>>>& IncomingUdpMessages() {
-                return incomingUdpMessages;
+                return incomingTcpMessages_;
             }
 
         protected:
-            std::string _host;
-            uint16_t _port;
+            std::string host_;
+            uint16_t port_;
 
-            asio::io_context context;
-            std::thread contextThread;
-            std::unique_ptr<TcpConnection<MessageType>> currentTcpConnection;
-            std::unique_ptr<UdpConnection<MessageType>> currentUdpConnection;
+            asio::io_context context_;
+            std::thread contextThread_;
+            std::unique_ptr<TcpConnection<MessageType>> currentTcpConnection_;
 
         private:
             // This is the thread safe queue of incoming messages from server
-            TsQueue<owned_message<MessageType, TcpConnection<MessageType>>> incomingTcpMessages;
-            TsQueue<owned_message<MessageType, UdpConnection<MessageType>>> incomingUdpMessages;
+            TsQueue<owned_message<MessageType, TcpConnection<MessageType>>> incomingTcpMessages_;
         };
     }  // namespace net
 }  // namespace RType

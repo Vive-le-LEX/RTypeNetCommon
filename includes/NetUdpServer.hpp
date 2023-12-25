@@ -20,18 +20,18 @@ namespace RType {
         template <typename MessageType>
         class UdpServerInterface : public std::enable_shared_from_this<UdpServerInterface<MessageType>> {
            public:
-            UdpServerInterface(asio::io_context& context, uint16_t port) : _context(context),
-                                                                  _port(port),
-                                                                  _socket(context),
-                                                                  _bytesReceived(0),
-                                                                  _bytesSending(0),
-                                                                  _bytesSent(0),
-                                                                  _datagramsReceived(0),
-                                                                  _datagramsSent(0)
+            UdpServerInterface(asio::io_context& context, uint16_t port) : context_(context),
+                                                                  port_(port),
+                                                                  socket_(context),
+                                                                  bytesReceived_(0),
+                                                                  bytesSending_(0),
+                                                                  bytesSent_(0),
+                                                                  datagramsReceived_(0),
+                                                                  datagramsSent_(0)
             {
-                _endpoint = asio::ip::udp::endpoint(asio::ip::udp::v4(), port);
-                if (_port == 0) {
-                    _port = _endpoint.port();
+                endpoint_ = asio::ip::udp::endpoint(asio::ip::udp::v4(), port);
+                if (port_ == 0) {
+                    port_ = endpoint_.port();
                 }
             }
 
@@ -46,25 +46,25 @@ namespace RType {
                     if (this->IsStarted()) {
                         return;
                     }
-                    _socket.open(_endpoint.protocol());
+                    socket_.open(endpoint_.protocol());
 
-                    _socket.bind(_endpoint);
+                    socket_.bind(endpoint_);
 
-                    _receiveBuffer.resize(1024);
-                    _receiveBufferLimit = 4096;
+                    receiveBuffer_.resize(1024);
+                    receiveBufferLimit_ = 4096;
 
-                    _bytesReceived = 0;
-                    _bytesSending = 0;
-                    _bytesSent = 0;
-                    _datagramsReceived = 0;
-                    _datagramsSent = 0;
+                    bytesReceived_ = 0;
+                    bytesSending_ = 0;
+                    bytesSent_ = 0;
+                    datagramsReceived_ = 0;
+                    datagramsSent_ = 0;
 
                     _started = true;
 
                     onStarted();
                 };
 
-                _context.post(startHandler);
+                context_.post(startHandler);
                 return true;
             }
 
@@ -79,21 +79,21 @@ namespace RType {
                     if (!this->IsStarted()) {
                         return;
                     }
-                    _socket.close();
+                    socket_.close();
                     _started = false;
-                    _receiving = false;
-                    _sending = false;
+                    receiving_ = false;
+                    sending_ = false;
 
                     onStopped();
                 };
 
-                _context.get_executor().post(stopHandler);
+                context_.get_executor().post(stopHandler);
 
                 return true;
             }
 
             size_t Send(const message<MessageType>& msg) {
-                return Send(_endpoint, msg);
+                return Send(endpoint_, msg);
             }
 
             //! Send datagram to the given endpoint (synchronous)
@@ -115,13 +115,13 @@ namespace RType {
 
                 asio::error_code ec;
 
-                tempOutgoingMessage = msg;
+                tempOutgoingMessage_ = msg;
 
-                size_t sent = _socket.send_to(asio::buffer(&tempOutgoingMessage.header, sizeof(message_header<MessageType>)), endpoint, 0, ec);
+                size_t sent = socket_.send_to(asio::buffer(&tempOutgoingMessage_.header, sizeof(message_header<MessageType>)), endpoint, 0, ec);
 
                 if (sent > 0) {
-                    ++_datagramsSent;
-                    _bytesSent += sent;
+                    ++datagramsSent_;
+                    bytesSent_ += sent;
 
                     onSent(endpoint, sent);
                 }
@@ -134,7 +134,7 @@ namespace RType {
             }
 
             bool SendAsync(const message<MessageType>& msg) {
-                return SendAsync(_endpoint, msg);
+                return SendAsync(endpoint_, msg);
             }
 
             //! Send datagram to the given endpoint (asynchronous)
@@ -149,29 +149,29 @@ namespace RType {
                     return false;
                 }
 
-                if (_sending) {
+                if (sending_) {
                     std::cout << "[UDP] Server is already sending a message" << std::endl;
                     return false;
                 }
 
-                _sending = true;
+                sending_ = true;
 
-                _bytesSending = msg.size();
+                bytesSending_ = msg.size();
 
                 auto self = this->shared_from_this();
                 auto sendHandler = [this, self](std::error_code ec, size_t sent) {
-                    _sending = false;
+                    sending_ = false;
 
                     if (!this->IsStarted()) {
                         return;
                     }
 
                     if (sent > 0) {
-                        _bytesSending = 0;
-                        ++_datagramsSent;
-                        _bytesSent += sent;
+                        bytesSending_ = 0;
+                        ++datagramsSent_;
+                        bytesSent_ += sent;
 
-                        onSent(_endpoint, sent);
+                        onSent(endpoint_, sent);
                     }
 
                     if (ec) {
@@ -180,15 +180,15 @@ namespace RType {
                     }
                 };
 
-                tempOutgoingMessage = msg;
+                tempOutgoingMessage_ = msg;
 
-                _socket.async_send_to(asio::buffer(&tempOutgoingMessage.header, sizeof(message_header<MessageType>)), endpoint, sendHandler);
+                socket_.async_send_to(asio::buffer(&tempOutgoingMessage_.header, sizeof(message_header<MessageType>)), endpoint, sendHandler);
 
                 return true;
             }
 
             size_t Receive(void* buffer, size_t size) {
-                return Receive(_endpoint, buffer, size);
+                return Receive(endpoint_, buffer, size);
             }
 
             //! Receive datagram from the given endpoint (synchronous)
@@ -215,10 +215,10 @@ namespace RType {
 
                 asio::error_code ec;
 
-                size_t received = _socket.receive_from(asio::buffer(buffer, size), endpoint, 0, ec);
+                size_t received = socket_.receive_from(asio::buffer(buffer, size), endpoint, 0, ec);
 
-                ++_datagramsReceived;
-                _bytesReceived += received;
+                ++datagramsReceived_;
+                bytesReceived_ += received;
 
                 onReceived(endpoint, buffer, received);
 
@@ -231,7 +231,7 @@ namespace RType {
 
             //! Receive datagram from the client (asynchronous)
             void ReceiveAsync() {
-                if (_receiving) {
+                if (receiving_) {
                     std::cout << "[UDP] Server is already receiving a message" << std::endl;
                     return;
                 }
@@ -241,10 +241,10 @@ namespace RType {
                     return;
                 }
 
-                _receiving = true;
+                receiving_ = true;
                 auto self = this->shared_from_this();
                 auto receiveHandler = [this, self](std::error_code ec, size_t received) {
-                    _receiving = false;
+                    receiving_ = false;
 
                     if (!this->IsStarted()) {
                         return;
@@ -253,36 +253,36 @@ namespace RType {
                     if (ec) {
                         SendError(ec);
 
-                        onReceived(_endpoint, _receiveBuffer.data(), 0);
+                        onReceived(endpoint_, receiveBuffer_.data(), 0);
                         return;
                     }
 
-                    ++_datagramsReceived;
-                    _bytesReceived += received;
+                    ++datagramsReceived_;
+                    bytesReceived_ += received;
 
-                    onReceived(_endpoint, _receiveBuffer.data(), received);
+                    onReceived(endpoint_, receiveBuffer_.data(), received);
 
-                    if (_receiveBuffer.size() == received) {
+                    if (receiveBuffer_.size() == received) {
                         // Check the reception buffer limit
-                        if (((2 * received) > _receiveBufferLimit) && (_receiveBufferLimit > 0)) {
+                        if (((2 * received) > receiveBufferLimit_) && (receiveBufferLimit_ > 0)) {
                             SendError(asio::error::no_buffer_space);
 
                             // Call the datagram received zero handler
-                            onReceived(_endpoint, _receiveBuffer.data(), 0);
+                            onReceived(endpoint_, receiveBuffer_.data(), 0);
 
                             return;
                         }
 
-                        _receiveBuffer.resize(2 * received);
+                        receiveBuffer_.resize(2 * received);
                     }
                 };
 
-                _socket.async_receive_from(asio::buffer(_receiveBuffer.data(), _receiveBuffer.size()), _endpoint, receiveHandler);
+                socket_.async_receive_from(asio::buffer(receiveBuffer_.data(), receiveBuffer_.size()), endpoint_, receiveHandler);
             }
 
             [[nodiscard]] bool IsStarted() const { return _started; }
 
-            [[nodiscard]] uint16_t GetPort() const { return _port; }
+            [[nodiscard]] uint16_t GetPort() const { return port_; }
 
            protected:
             //! Handle server started notification
@@ -322,27 +322,27 @@ namespace RType {
             virtual void onError(int error, const std::string& category, const std::string& message) = 0;
 
            private:
-            uint16_t _port;
+            uint16_t port_;
 
-            asio::io_context& _context;
-            asio::ip::udp::socket _socket;
-            asio::ip::udp::endpoint _endpoint;
+            asio::io_context& context_;
+            asio::ip::udp::socket socket_;
+            asio::ip::udp::endpoint endpoint_;
 
-            std::vector<uint8_t> _receiveBuffer;
-            size_t _receiveBufferLimit{0};
+            std::vector<uint8_t> receiveBuffer_;
+            size_t receiveBufferLimit_{0};
 
-            message<MessageType> tempOutgoingMessage;
+            message<MessageType> tempOutgoingMessage_;
 
             std::atomic<bool> _started = false;
-            bool _sending = false;
-            bool _receiving = false;
+            bool sending_ = false;
+            bool receiving_ = false;
 
             // Server statistic
-            uint64_t _bytesSending;
-            uint64_t _bytesSent;
-            uint64_t _bytesReceived;
-            uint64_t _datagramsSent;
-            uint64_t _datagramsReceived;
+            uint64_t bytesSending_;
+            uint64_t bytesSent_;
+            uint64_t bytesReceived_;
+            uint64_t datagramsSent_;
+            uint64_t datagramsReceived_;
 
             void SendError(std::error_code ec) {
                 // Skip Asio disconnect errors

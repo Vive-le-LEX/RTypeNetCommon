@@ -30,7 +30,7 @@ namespace RType {
             virtual ~TcpConnection() = default;
 
             void ConnectToServer(const asio::ip::tcp::resolver::results_type& endpoints) {
-                if (this->connectionOwner == owner::server) {
+                if (this->connectionOwner_ == owner::server) {
                     throw std::runtime_error("Cannot connect a server to a server");
                 }
 
@@ -47,10 +47,10 @@ namespace RType {
             }
 
             void Send(const message<MessageType>& msg) override {
-                asio::post(this->asioContext,
+                asio::post(this->asioContext_,
                            [this, msg]() {
-                               bool writingMessage = !this->outgoingMessages.empty();
-                               this->outgoingMessages.push_back(msg);
+                               bool writingMessage = !this->outgoingMessages_.empty();
+                               this->outgoingMessages_.push_back(msg);
                                if (!writingMessage) {
                                    WriteHeader();
                                }
@@ -60,15 +60,15 @@ namespace RType {
            private:
             virtual void WriteHeader() final {
                 asio::async_write(this->tcpSocket,
-                                  asio::buffer(&this->outgoingMessages.front().header, sizeof(message_header<MessageType>)),
+                                  asio::buffer(&this->outgoingMessages_.front().header, sizeof(message_header<MessageType>)),
                                   [this](std::error_code ec, std::size_t length) {
                                       (void)length;
                                       if (!ec) {
-                                          if (this->outgoingMessages.front().body.size() > 0) {
+                                          if (this->outgoingMessages_.front().body.size() > 0) {
                                               WriteBody();
                                           } else {
-                                              this->outgoingMessages.pop_front();
-                                              if (!this->outgoingMessages.empty()) {
+                                              this->outgoingMessages_.pop_front();
+                                              if (!this->outgoingMessages_.empty()) {
                                                   WriteHeader();
                                               }
                                           }
@@ -81,12 +81,12 @@ namespace RType {
 
             virtual void WriteBody() final {
                 asio::async_write(this->tcpSocket,
-                                  asio::buffer(this->outgoingMessages.front().body.data(), this->outgoingMessages.front().body.size()),
+                                  asio::buffer(this->outgoingMessages_.front().body.data(), this->outgoingMessages_.front().body.size()),
                                   [this](std::error_code ec, std::size_t length) {
                                       (void)length;
                                       if (!ec) {
-                                          this->outgoingMessages.pop_front();
-                                          if (!this->outgoingMessages.empty()) {
+                                          this->outgoingMessages_.pop_front();
+                                          if (!this->outgoingMessages_.empty()) {
                                               WriteHeader();
                                           }
                                       } else {
@@ -98,12 +98,12 @@ namespace RType {
 
             virtual void ReadHeader() final {
                 asio::async_read(this->tcpSocket,
-                                 asio::buffer(&this->tempIncomingMessage.header, sizeof(message_header<MessageType>)),
+                                 asio::buffer(&this->tempIncomingMessage_.header, sizeof(message_header<MessageType>)),
                                  [this](std::error_code ec, std::size_t length) {
                                      (void)length;
                                      if (!ec) {
-                                         if (this->tempIncomingMessage.header.size > 0) {
-                                             this->tempIncomingMessage.body.resize(this->tempIncomingMessage.header.size);
+                                         if (this->tempIncomingMessage_.header.size > 0) {
+                                             this->tempIncomingMessage_.body.resize(this->tempIncomingMessage_.header.size);
                                              ReadBody();
                                          } else {
                                              this->AddToIncomingMessageQueue();
@@ -117,7 +117,7 @@ namespace RType {
 
             virtual void ReadBody() final {
                 asio::async_read(this->tcpSocket,
-                                 asio::buffer(this->tempIncomingMessage.body.data(), this->tempIncomingMessage.body.size()),
+                                 asio::buffer(this->tempIncomingMessage_.body.data(), this->tempIncomingMessage_.body.size()),
                                  [this](std::error_code ec, std::size_t length) {
                                      (void)length;
                                      if (!ec) {
@@ -131,11 +131,11 @@ namespace RType {
 
             virtual void WriteValidation() final {
                 asio::async_write(this->tcpSocket,
-                                  asio::buffer(&this->handshakeOut, sizeof(uint64_t)),
+                                  asio::buffer(&this->handshakeOut_, sizeof(uint64_t)),
                                   [this](std::error_code ec, std::size_t length) {
                                       (void)length;
                                       if (!ec) {
-                                          if (this->connectionOwner == owner::client) {
+                                          if (this->connectionOwner_ == owner::client) {
                                               this->ReadHeader();
                                           }
                                       } else {
@@ -146,22 +146,22 @@ namespace RType {
             }
 
             virtual void ReadValidation(RType::net::ServerInterface<MessageType>* server = nullptr) final {
-                if (this->connectionOwner == owner::server) {
+                if (this->connectionOwner_ == owner::server) {
                     AsyncTimer::GetInstance()->addTimer(this->id, 1000, [this, server]() {
                         std::cout << "Client Timed out while reading validation" << std::endl;
                         this->tcpSocket.close();
                     });
                 }
 
-                asio::async_read(this->tcpSocket, asio::buffer(&this->handshakeIn, sizeof(uint64_t)),
+                asio::async_read(this->tcpSocket, asio::buffer(&this->handshakeIn_, sizeof(uint64_t)),
                                  [this, server](std::error_code ec, std::size_t length) {
                                      (void)length;
                                      if (!ec) {
-                                         if (this->connectionOwner == owner::server) {
+                                         if (this->connectionOwner_ == owner::server) {
                                              // Connection is a server, so check response from client
 
                                              // Compare sent data to actual solution
-                                             if (this->handshakeIn == this->handshakeCheck) {
+                                             if (this->handshakeIn_ == this->handshakeCheck_) {
                                                  AsyncTimer::GetInstance()->removeTimer(this->id);
                                                  // Client has provided valid solution, so allow it to connect properly
                                                  std::cout << "Client Validated" << std::endl;
@@ -176,7 +176,7 @@ namespace RType {
                                              }
                                          } else {
                                              // Connection is a client, so solve puzzle
-                                             this->handshakeOut = this->scramble(this->handshakeIn);
+                                             this->handshakeOut_ = this->scramble(this->handshakeIn_);
 
                                              // Write the result
                                              WriteValidation();
@@ -190,14 +190,14 @@ namespace RType {
             }
 
             virtual void AddToIncomingMessageQueue() final {
-                if (this->connectionOwner == owner::server) {
+                if (this->connectionOwner_ == owner::server) {
                     owned_message<MessageType, TcpConnection<MessageType>> msg;
                     msg.remote = this->shared_from_this();
-                    msg.msg = this->tempIncomingMessage;
-                    this->incomingTcpMessages.push_back(msg);
+                    msg.msg = this->tempIncomingMessage_;
+                    this->incomingTcpMessages_.push_back(msg);
                 } else {
-                    owned_message<MessageType, TcpConnection<MessageType>> msg{nullptr, this->tempIncomingMessage};
-                    this->incomingTcpMessages.push_back(msg);
+                    owned_message<MessageType, TcpConnection<MessageType>> msg{nullptr, this->tempIncomingMessage_};
+                    this->incomingTcpMessages_.push_back(msg);
                 }
 
                 ReadHeader();
