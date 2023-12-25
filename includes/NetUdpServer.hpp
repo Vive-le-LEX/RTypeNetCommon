@@ -21,18 +21,14 @@ namespace RType {
         class UdpServerInterface : public std::enable_shared_from_this<UdpServerInterface<MessageType>> {
            public:
             UdpServerInterface(asio::io_context& context, uint16_t port) : context_(context),
-                                                                  port_(port),
-                                                                  socket_(context),
-                                                                  bytesReceived_(0),
-                                                                  bytesSending_(0),
-                                                                  bytesSent_(0),
-                                                                  datagramsReceived_(0),
-                                                                  datagramsSent_(0)
-            {
+                                                                           port_(port),
+                                                                           socket_(context),
+                                                                           bytesReceived_(0),
+                                                                           bytesSending_(0),
+                                                                           bytesSent_(0),
+                                                                           datagramsReceived_(0),
+                                                                           datagramsSent_(0) {
                 endpoint_ = asio::ip::udp::endpoint(asio::ip::udp::v4(), port);
-                if (port_ == 0) {
-                    port_ = endpoint_.port();
-                }
             }
 
             bool Start() {
@@ -49,6 +45,8 @@ namespace RType {
                     socket_.open(endpoint_.protocol());
 
                     socket_.bind(endpoint_);
+
+                    port_ = socket_.local_endpoint().port();
 
                     receiveBuffer_.resize(1024);
                     receiveBufferLimit_ = 4096;
