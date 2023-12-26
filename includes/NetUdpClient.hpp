@@ -282,7 +282,7 @@ namespace RType {
                 socket_.async_receive_from(asio::buffer(receiveBuffer_.data(), receiveBuffer_.size()), endpoint_, receiveHandler);
             }
 
-            [[nodiscard]] uuid::uuid() GetUuid() const noexcept { return uuid_; }
+            [[nodiscard]] uuids::uuid GetUuid() const noexcept { return uuid_; }
 
             [[nodiscard]] uint16_t GetPort() const noexcept { return port_; }
             [[nodiscard]] std::string GetHost() const noexcept { return host_; }
