@@ -19,17 +19,17 @@
 namespace RType {
     namespace net {
         template <typename MessageType>
-        class UdpClientInterface {
+        class UdpClientInterface : public std::enable_shared_from_this<UdpClientInterface<MessageType>> {
            public:
             UdpClientInterface(asio::io_context& context, std::string host, uint16_t port) : context_(context),
-                                                                                    port_(port),
-                                                                                    host_(std::move(host)),
-                                                                                    socket_(context),
-                                                                                    bytesSending_(0),
-                                                                                    bytesSent_(0),
-                                                                                    bytesReceived_(0),
-                                                                                    datagramsSent_(0),
-                                                                                    datagramsReceived_(0)
+                                                                                             port_(port),
+                                                                                             host_(std::move(host)),
+                                                                                             socket_(context),
+                                                                                             bytesSending_(0),
+                                                                                             bytesSent_(0),
+                                                                                             bytesReceived_(0),
+                                                                                             datagramsSent_(0),
+                                                                                             datagramsReceived_(0)
 
             {
                 std::random_device rd;
@@ -256,8 +256,7 @@ namespace RType {
                         return;
 
                     // Disconnect on error
-                    if (ec)
-                    {
+                    if (ec) {
                         SendError(ec);
                         DisconnectInternalAsync(true);
                         return;
@@ -283,7 +282,26 @@ namespace RType {
                 socket_.async_receive_from(asio::buffer(receiveBuffer_.data(), receiveBuffer_.size()), endpoint_, receiveHandler);
             }
 
+            [[nodiscard]] uuid::uuid() GetUuid() const noexcept { return uuid_; }
+
+            [[nodiscard]] uint16_t GetPort() const noexcept { return port_; }
+            [[nodiscard]] std::string GetHost() const noexcept { return host_; }
+
+            [[nodiscard]] asio::io_context& GetContext() noexcept { return context_; }
+            [[nodiscard]] asio::ip::udp::socket& GetSocket() noexcept { return socket_; }
+            [[nodiscard]] asio::ip::udp::endpoint& GetEndpoint() noexcept { return endpoint_; }
+
+            [[nodiscard]] bool IsStarted() const noexcept { return IsConnected(); }
             [[nodiscard]] bool IsConnected() const noexcept { return connected_; }
+
+            [[nodiscard]] uint64_t GetBytesSending() const noexcept { return bytesSending_; }
+            [[nodiscard]] uint64_t GetBytesSent() const noexcept { return bytesSent_; }
+            [[nodiscard]] uint64_t GetBytesReceived() const noexcept { return bytesReceived_; }
+            [[nodiscard]] uint64_t GetDatagramsSent() const noexcept { return datagramsSent_; }
+            [[nodiscard]] uint64_t GetDatagramsReceived() const noexcept { return datagramsReceived_; }
+
+            [[nodiscard]] bool IsSending() const noexcept { return sending_; }
+            [[nodiscard]] bool IsReceiving() const noexcept { return receiving_; }
 
            protected:
             //! Handle client connected notification
