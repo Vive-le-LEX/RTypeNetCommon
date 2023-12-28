@@ -23,7 +23,7 @@ namespace RType {
 
         template <typename MessageType>
         class ServerInterface {
-        public:
+           public:
             /*
                 @brief Construct the server interface
                 @param port The port to listen on
@@ -72,29 +72,29 @@ namespace RType {
             */
             void WaitForClientConnection() {
                 asioAcceptor_.async_accept(
-                        [this](std::error_code ec, asio::ip::tcp::socket _socket) {
-                            if (!ec) {
-                                std::cout << "[SERVER] New Connection: " << _socket.remote_endpoint() << "\n";
+                    [this](std::error_code ec, asio::ip::tcp::socket _socket) {
+                        if (!ec) {
+                            std::cout << "[SERVER] New Connection: " << _socket.remote_endpoint() << "\n";
 
-                                std::shared_ptr<TcpConnection<MessageType>> newConnection =
-                                        std::make_shared<TcpConnection<MessageType>>(owner::server,
-                                                                                     asioContext_, std::move(_socket), incomingTcpMessages_);
+                            std::shared_ptr<TcpConnection<MessageType>> newConnection =
+                                std::make_shared<TcpConnection<MessageType>>(owner::server,
+                                                                             asioContext_, std::move(_socket), incomingTcpMessages_);
 
-                                if (OnClientConnect(newConnection)) {
-                                    activeTcpConnections_.push_back(std::move(newConnection));
+                            if (OnClientConnect(newConnection)) {
+                                activeTcpConnections_.push_back(std::move(newConnection));
 
-                                    activeTcpConnections_.back()->ConnectToClient(this, IDCounter_++);
+                                activeTcpConnections_.back()->ConnectToClient(this, IDCounter_++);
 
-                                    std::cout << "[" << activeTcpConnections_.back()->GetID() << "] Connection Approved\n";
-                                } else {
-                                    std::cout << "[-----] Connection Denied\n";
-                                }
+                                std::cout << "[" << activeTcpConnections_.back()->GetID() << "] Connection Approved\n";
                             } else {
-                                std::cout << "[SERVER] New Connection Error: " << ec.message() << "\n";
+                                std::cout << "[-----] Connection Denied\n";
                             }
+                        } else {
+                            std::cout << "[SERVER] New Connection Error: " << ec.message() << "\n";
+                        }
 
-                            WaitForClientConnection();
-                        });
+                        WaitForClientConnection();
+                    });
             }
 
             /*
@@ -112,7 +112,14 @@ namespace RType {
 
                     // Then physically remove it from the container
                     activeTcpConnections_.erase(
-                            std::remove(activeTcpConnections_.begin(), activeTcpConnections_.end(), client), activeTcpConnections_.end());
+                        std::remove(activeTcpConnections_.begin(), activeTcpConnections_.end(), client), activeTcpConnections_.end());
+                }
+            }
+
+            void MessageClient(uint32_t id, const message<MessageType>& msg) {
+                auto client = GetClientById(id);
+                if (client != nullptr) {
+                    MessageClient(client, msg);
                 }
             }
 
@@ -138,7 +145,7 @@ namespace RType {
 
                 if (invalidClientExists)
                     activeTcpConnections_.erase(
-                            std::remove(activeTcpConnections_.begin(), activeTcpConnections_.end(), nullptr), activeTcpConnections_.end());
+                        std::remove(activeTcpConnections_.begin(), activeTcpConnections_.end(), nullptr), activeTcpConnections_.end());
             }
 
             /*
@@ -167,7 +174,7 @@ namespace RType {
                 return nullptr;
             }
 
-        protected:
+           protected:
             /*
                 @brief Called when a client connects
                 @param client The client that connected
@@ -188,10 +195,10 @@ namespace RType {
             */
             virtual void OnMessage(std::shared_ptr<TcpConnection<MessageType>> client, message<MessageType>& msg) = 0;
 
-        public:
+           public:
             virtual void OnClientValidated(std::shared_ptr<TcpConnection<MessageType>> client) = 0;
 
-        protected:
+           protected:
             uint16_t port_;
 
             TsQueue<owned_message<MessageType, TcpConnection<MessageType>>> incomingTcpMessages_;
