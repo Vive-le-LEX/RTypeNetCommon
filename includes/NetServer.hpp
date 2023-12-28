@@ -159,6 +159,14 @@ namespace RType {
                 }
             }
 
+            std::shared_ptr<TcpConnection<MessageType>> GetClientById(uint32_t id) {
+                for (auto& client : activeTcpConnections_) {
+                    if (client->GetID() == id)
+                        return client;
+                }
+                return nullptr;
+            }
+
         protected:
             /*
                 @brief Called when a client connects
