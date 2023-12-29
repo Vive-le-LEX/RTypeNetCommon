@@ -111,16 +111,11 @@ namespace RType {
                     return 0;
                 }
 
-                assert((msg != nullptr) && "Pointer to the buffer should not be null!");
-                if (msg == nullptr) {
-                    return 0;
-                }
-
                 asio::error_code ec;
 
                 tempOutgoingMessage_ = msg;
 
-                size_t sent = socket_.send_to(asio::buffer(&tempOutgoingMessage_.header, sizeof(message_header<MessageType>)), endpoint, 0, ec);
+                size_t sent = socket_.send_to(asio::buffer(&tempOutgoingMessage_, tempOutgoingMessage_.size()), endpoint, 0, ec);
 
                 if (sent > 0) {
                     ++datagramsSent_;
