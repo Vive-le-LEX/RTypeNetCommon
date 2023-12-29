@@ -174,6 +174,10 @@ namespace RType {
                 return nullptr;
             }
 
+            std::deque<std::shared_ptr<TcpConnection<MessageType>>> GetClients() {
+                return activeTcpConnections_;
+            }
+
            protected:
             /*
                 @brief Called when a client connects
