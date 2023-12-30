@@ -98,25 +98,27 @@ namespace RType {
 
             bool Disconnect() { return DisconnectInternal(); }
 
-            size_t Send(const message<MessageType>& msg) {
-                return Send(endpoint_, msg);
+            size_t Send(const void* buffer, size_t size) {
+                return Send(endpoint_, buffer, size);
             }
 
-            size_t Send(const asio::ip::udp::endpoint& endpoint, const message<MessageType>& msg) {
+            size_t Send(const asio::ip::udp::endpoint& endpoint, const void* buffer, size_t size) {
                 if (!IsConnected()) {
                     return 0;
                 }
 
-                if (msg.size() == 0) {
+                if (size == 0) {
+                    return 0;
+                }
+
+                assert((buffer != nullptr) && "Pointer to the buffer should not be null!");
+                if (buffer == nullptr) {
                     return 0;
                 }
 
                 asio::error_code ec;
 
-                tempOutgoingMessage_ = msg;
-
-                size_t sent = socket_.send_to(asio::buffer(&tempOutgoingMessage_, tempOutgoingMessage_.size()), endpoint, 0, ec);
-
+                size_t sent = socket_.send_to(asio::const_buffer(buffer, size), endpoint, 0, ec);
                 if (sent > 0) {
                     ++datagramsSent_;
                     bytesSent_ += sent;
@@ -132,11 +134,11 @@ namespace RType {
                 return sent;
             }
 
-            bool SendAsync(const message<MessageType>& msg) {
+            bool SendAsync(const void *buffer, size_t size) {
                 return SendAsync(endpoint_, msg);
             }
 
-            bool SendAsync(const asio::ip::udp::endpoint& endpoint, const message<MessageType>& msg) {
+            bool SendAsync(const asio::ip::udp::endpoint& endpoint, const void *buffer, size_t size) {
                 if (sending_) {
                     return false;
                 }
@@ -156,7 +158,7 @@ namespace RType {
 
                 sending_ = true;
 
-                bytesSending_ = msg.size();
+                bytesSending_ = size;
 
                 auto self = this->shared_from_this();
                 auto sendHandler = [this, self](std::error_code ec, size_t sent) {
@@ -180,9 +182,7 @@ namespace RType {
                     }
                 };
 
-                tempOutgoingMessage_ = msg;
-
-                socket_.async_send_to(asio::buffer(&tempOutgoingMessage_.header, sizeof(message_header<MessageType>)), endpoint, 0, sendHandler);
+                socket_.async_send_to(asio::buffer(buffer, size), endpoint, 0, sendHandler);
 
                 return true;
             }
