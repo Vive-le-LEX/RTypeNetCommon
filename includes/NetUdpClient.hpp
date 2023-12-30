@@ -135,7 +135,7 @@ namespace RType {
             }
 
             bool SendAsync(const void *buffer, size_t size) {
-                return SendAsync(endpoint_, msg);
+                return SendAsync(endpoint_, buffer, size);
             }
 
             bool SendAsync(const asio::ip::udp::endpoint& endpoint, const void *buffer, size_t size) {
@@ -147,17 +147,16 @@ namespace RType {
                     return false;
                 }
 
-                if (msg.size() == 0) {
+                if (size == 0) {
                     return false;
                 }
 
-                assert((msg != nullptr) && "Pointer to the buffer should not be null!");
-                if (msg == nullptr) {
+                assert((buffer != nullptr) && "Pointer to the buffer should not be null!");
+                if (buffer == nullptr) {
                     return false;
                 }
 
                 sending_ = true;
-
                 bytesSending_ = size;
 
                 auto self = this->shared_from_this();
