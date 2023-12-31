@@ -90,8 +90,8 @@ namespace RType {
                 return true;
             }
 
-            size_t Send(const message<MessageType>& msg) {
-                return Send(endpoint_, msg);
+            size_t Send(const void* buffer, size_t size) {
+                return Send(endpoint_, buffer, size);
             }
 
             //! Send datagram to the given endpoint (synchronous)
@@ -100,23 +100,24 @@ namespace RType {
                 \param msg - Message to send
                 \return Size of sent datagram
             */
-            size_t Send(const asio::ip::udp::endpoint& endpoint, const message<MessageType>& msg) {
+            size_t Send(const asio::ip::udp::endpoint& endpoint, const void* buffer, size_t size) {
                 if (!this->IsStarted()) {
                     std::cout << "[UDP] Server is not started" << std::endl;
                     return 0;
                 }
 
-                if (msg == nullptr) {
-                    std::cout << "[UDP] Message is null" << std::endl;
+                if (size == 0) {
+                    return 0;
+                }
+
+                assert((buffer != nullptr) && "Pointer to the buffer should not be null!");
+                if (buffer == nullptr) {
                     return 0;
                 }
 
                 asio::error_code ec;
 
-                tempOutgoingMessage_ = msg;
-
-                size_t sent = socket_.send_to(asio::buffer(&tempOutgoingMessage_.header, sizeof(message_header<MessageType>)), endpoint, 0, ec);
-
+                size_t sent = socket_.send_to(asio::const_buffer(buffer, size), endpoint, 0, ec);
                 if (sent > 0) {
                     ++datagramsSent_;
                     bytesSent_ += sent;
@@ -131,8 +132,8 @@ namespace RType {
                 return sent;
             }
 
-            bool SendAsync(const message<MessageType>& msg) {
-                return SendAsync(endpoint_, msg);
+            bool SendAsync(const void *buffer, size_t size) {
+                return SendAsync(endpoint_, buffer, size);
             }
 
             //! Send datagram to the given endpoint (asynchronous)
@@ -141,7 +142,7 @@ namespace RType {
                 \param msg - Message to send
                 \return True if the message was sent, false otherwise
             */
-            bool SendAsync(const asio::ip::udp::endpoint& endpoint, const message<MessageType>& msg) {
+            bool SendAsync(const asio::ip::udp::endpoint& endpoint, const void *buffer, size_t size) {
                 if (!this->IsStarted()) {
                     std::cout << "[UDP] Server is not started" << std::endl;
                     return false;
@@ -152,9 +153,17 @@ namespace RType {
                     return false;
                 }
 
-                sending_ = true;
+                if (size == 0) {
+                    return false;
+                }
 
-                bytesSending_ = msg.size();
+                assert((buffer != nullptr) && "Pointer to the buffer should not be null!");
+                if (buffer == nullptr) {
+                    return false;
+                }
+
+                sending_ = true;
+                bytesSending_ = size;
 
                 auto self = this->shared_from_this();
                 auto sendHandler = [this, self](std::error_code ec, size_t sent) {
@@ -178,9 +187,7 @@ namespace RType {
                     }
                 };
 
-                tempOutgoingMessage_ = msg;
-
-                socket_.async_send_to(asio::buffer(&tempOutgoingMessage_.header, sizeof(message_header<MessageType>)), endpoint, sendHandler);
+                socket_.async_send_to(asio::buffer(buffer, size), endpoint, 0, sendHandler);
 
                 return true;
             }
