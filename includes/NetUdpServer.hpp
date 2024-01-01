@@ -85,7 +85,7 @@ namespace RType {
                     onStopped();
                 };
 
-                context_.get_executor().post(stopHandler);
+                context_.get_executor().post(stopHandler, std::allocator<void>());
 
                 return true;
             }

@@ -164,7 +164,6 @@ namespace RType {
                                              if (this->handshakeIn_ == this->handshakeCheck_) {
                                                  AsyncTimer::GetInstance()->removeTimer(this->id_);
                                                  // Client has provided valid solution, so allow it to connect properly
-                                                 std::cout << "Client Validated" << std::endl;
                                                  server->OnClientValidated(this->shared_from_this());
 
                                                  // Sit waiting to receive data now
