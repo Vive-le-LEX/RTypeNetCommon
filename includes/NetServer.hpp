@@ -85,7 +85,7 @@ namespace RType {
 
                                 activeTcpConnections_.back()->ConnectToClient(this, IDCounter_++);
 
-                                std::cout << "[" << activeTcpConnections_.back()->GetID() << "] Connection Approved\n";
+                                std::cout << "[SERVER][" << activeTcpConnections_.back()->GetID() << "] Connection Approved\n";
                             } else {
                                 std::cout << "[-----] Connection Denied\n";
                             }
