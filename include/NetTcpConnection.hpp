@@ -108,8 +108,10 @@ namespace RType {
                                          } else {
                                              this->AddToIncomingMessageQueue();
                                          }
-                                     } else if (ec != asio::error::eof) {
-                                         std::cout << "[Error][" << this->id_ << "] Read header failed: " << ec.message() << std::endl;
+                                     } else {
+                                         if (ec != asio::error::eof) {
+                                             std::cout << "[Error][" << this->id_ << "] Read header failed: " << ec.message() << std::endl;
+                                         }
                                          this->tcpSocket.close();
                                      }
                                  });
