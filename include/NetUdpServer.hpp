@@ -30,11 +30,6 @@ namespace RType {
                     return false;
                 }
 
-                assert((port_ > 0) && "Server port number must be valid!");
-                if (port_ <= 0) {
-                    return false;
-                }
-
                 auto self = this->shared_from_this();
                 auto startHandler = [this, self]() {
                     if (this->IsStarted()) {
@@ -56,6 +51,7 @@ namespace RType {
                     datagramsSent_ = 0;
 
                     _started = true;
+                    connected_ = true;
 
                     onStarted();
                 };
