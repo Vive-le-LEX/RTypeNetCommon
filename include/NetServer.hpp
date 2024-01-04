@@ -12,21 +12,24 @@
 #pragma once
 
 #include "NetCommon.hpp"
-#include "NetConnection.hpp"
 #include "NetMessage.hpp"
+#include "NetTcpConnection.hpp"
 #include "NetTsqueue.hpp"
 
 namespace RType {
     namespace net {
         template <typename T>
+        class TcpConnection;
+
+        template <typename MessageType>
         class ServerInterface {
            public:
             /*
                 @brief Construct the server interface
                 @param port The port to listen on
             */
-            explicit ServerInterface(uint16_t port) : asioAcceptor(asioContext, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port)) {
-                std::cout << "[SERVER] Listening on: " << getIp() << ":" << port << std::endl;
+            explicit ServerInterface(uint16_t port) : asioAcceptor_(asioContext_, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port_)), port_(port) {
+                std::cout << "[SERVER] Listening on: " << getIp() << ":" << port_ << std::endl;
             }
 
             virtual ~ServerInterface() {
@@ -40,8 +43,7 @@ namespace RType {
             bool Start() {
                 try {
                     WaitForClientConnection();
-
-                    threadContext = std::thread([this]() { asioContext.run(); });
+                    threadContext_ = std::thread([this]() { asioContext_.run(); });
                 } catch (std::exception& e) {
                     std::cerr << "[SERVER] Exception: " << e.what() << "\n";
                     return false;
@@ -55,9 +57,9 @@ namespace RType {
                 @brief Stop the server
             */
             void Stop() {
-                asioContext.stop();
+                asioContext_.stop();
 
-                if (threadContext.joinable()) threadContext.join();
+                if (threadContext_.joinable()) threadContext_.join();
 
                 std::cout << "[SERVER] Stopped!\n";
             }
@@ -69,21 +71,21 @@ namespace RType {
                 for each incoming connection attempt
             */
             void WaitForClientConnection() {
-                asioAcceptor.async_accept(
+                asioAcceptor_.async_accept(
                     [this](std::error_code ec, asio::ip::tcp::socket _socket) {
                         if (!ec) {
                             std::cout << "[SERVER] New Connection: " << _socket.remote_endpoint() << "\n";
 
-                            std::shared_ptr<connection<T>> newConnection =
-                                std::make_shared<connection<T>>(connection<T>::owner::server,
-                                                                asioContext, std::move(_socket), incomingMessages);
+                            std::shared_ptr<TcpConnection<MessageType>> newConnection =
+                                std::make_shared<TcpConnection<MessageType>>(owner::server,
+                                                                             asioContext_, std::move(_socket), incomingTcpMessages_);
 
                             if (OnClientConnect(newConnection)) {
-                                activeConnections.push_back(std::move(newConnection));
+                                activeTcpConnections_.push_back(std::move(newConnection));
 
-                                activeConnections.back()->ConnectToClient(this, nIDCounter++);
+                                activeTcpConnections_.back()->ConnectToClient(this, IDCounter_++);
 
-                                std::cout << "[" << activeConnections.back()->GetID() << "] Connection Approved\n";
+                                std::cout << "[SERVER][" << activeTcpConnections_.back()->GetID() << "] Connection Approved\n";
                             } else {
                                 std::cout << "[-----] Connection Denied\n";
                             }
@@ -100,7 +102,7 @@ namespace RType {
                 @param client The client to send the message to
                 @param msg The message to send
             */
-            void MessageClient(std::shared_ptr<connection<T>> client, const message<T>& msg) {
+            void MessageClient(std::shared_ptr<TcpConnection<MessageType>> client, const message<MessageType>& msg) {
                 if (client && client->IsConnected()) {
                     client->Send(msg);
                 } else {
@@ -109,8 +111,15 @@ namespace RType {
                     client.reset();
 
                     // Then physically remove it from the container
-                    activeConnections.erase(
-                        std::remove(activeConnections.begin(), activeConnections.end(), client), activeConnections.end());
+                    activeTcpConnections_.erase(
+                        std::remove(activeTcpConnections_.begin(), activeTcpConnections_.end(), client), activeTcpConnections_.end());
+                }
+            }
+
+            void MessageClient(uint32_t id, const message<MessageType>& msg) {
+                auto client = GetClientById(id);
+                if (client != nullptr) {
+                    MessageClient(client, msg);
                 }
             }
 
@@ -119,10 +128,10 @@ namespace RType {
                 @param msg The message to send
                 @param ignoreClient A client to ignore
             */
-            void MessageAllClients(const message<T>& msg, std::shared_ptr<connection<T>> ignoreClient = nullptr) {
+            void MessageAllClients(const message<MessageType>& msg, std::shared_ptr<TcpConnection<MessageType>> ignoreClient = nullptr) {
                 bool invalidClientExists = false;
 
-                for (auto& client : activeConnections) {
+                for (auto& client : activeTcpConnections_) {
                     if (client && client->IsConnected()) {
                         if (client != ignoreClient)
                             client->Send(msg);
@@ -135,8 +144,8 @@ namespace RType {
                 }
 
                 if (invalidClientExists)
-                    activeConnections.erase(
-                        std::remove(activeConnections.begin(), activeConnections.end(), nullptr), activeConnections.end());
+                    activeTcpConnections_.erase(
+                        std::remove(activeTcpConnections_.begin(), activeTcpConnections_.end(), nullptr), activeTcpConnections_.end());
             }
 
             /*
@@ -145,16 +154,28 @@ namespace RType {
                 @param wait Whether to wait for a message
             */
             void Update(size_t maxMessages = -1, bool wait = false) {
-                if (wait) incomingMessages.wait();
+                if (wait) incomingTcpMessages_.wait();
 
                 size_t messageCount = 0;
-                while (messageCount < maxMessages && !incomingMessages.empty()) {
-                    auto msg = incomingMessages.pop_front();
+                while (messageCount < maxMessages && !incomingTcpMessages_.empty()) {
+                    auto msg = incomingTcpMessages_.pop_front();
 
                     OnMessage(msg.remote, msg.msg);
 
                     messageCount++;
                 }
+            }
+
+            std::shared_ptr<TcpConnection<MessageType>> GetClientById(uint32_t id) {
+                for (auto& client : activeTcpConnections_) {
+                    if (client->GetID() == id)
+                        return client;
+                }
+                return nullptr;
+            }
+
+            std::deque<std::shared_ptr<TcpConnection<MessageType>>> GetClients() {
+                return activeTcpConnections_;
             }
 
            protected:
@@ -163,35 +184,37 @@ namespace RType {
                 @param client The client that connected
                 @return True if the connection is accepted, false otherwise
             */
-            virtual bool OnClientConnect(std::shared_ptr<connection<T>> client) = 0;
+            virtual bool OnClientConnect(std::shared_ptr<TcpConnection<MessageType>> client) = 0;
 
             /*
                 @brief Called when a client disconnects
                 @param client The client that disconnected
             */
-            virtual void OnClientDisconnect(std::shared_ptr<connection<T>> client) = 0;
+            virtual void OnClientDisconnect(std::shared_ptr<TcpConnection<MessageType>> client) = 0;
 
             /*
                 @brief Called when a message arrives
                 @param client The client that sent the message
                 @param msg The message that was sent
             */
-            virtual void OnMessage(std::shared_ptr<connection<T>> client, message<T>& msg) = 0;
+            virtual void OnMessage(std::shared_ptr<TcpConnection<MessageType>> client, message<MessageType>& msg) = 0;
 
            public:
-            virtual void OnClientValidated(std::shared_ptr<connection<T>> client) {
-            }
+            virtual void OnClientValidated(std::shared_ptr<TcpConnection<MessageType>> client) = 0;
 
-            TsQueue<owned_message<T>> incomingMessages;
+           protected:
+            uint16_t port_;
 
-            std::deque<std::shared_ptr<connection<T>>> activeConnections;
+            TsQueue<owned_message<MessageType, TcpConnection<MessageType>>> incomingTcpMessages_;
 
-            asio::io_context asioContext;
-            std::thread threadContext;
+            std::deque<std::shared_ptr<TcpConnection<MessageType>>> activeTcpConnections_;
 
-            asio::ip::tcp::acceptor asioAcceptor;
+            asio::io_context asioContext_;
+            std::thread threadContext_;
 
-            uint32_t nIDCounter = 10000;
+            asio::ip::tcp::acceptor asioAcceptor_;
+
+            uint32_t IDCounter_ = 10000;
         };
     }  // namespace net
 }  // namespace RType

@@ -11,15 +11,15 @@
 
 #pragma once
 #include "NetCommon.hpp"
-#include "NetConnection.hpp"
+#include "NetTcpConnection.hpp"
 #include "NetMessage.hpp"
 #include "NetTsqueue.hpp"
 
 namespace RType {
     namespace net {
-        template <typename T>
+        template <typename MessageType>
         class ClientInterface {
-           public:
+        public:
             ClientInterface() = default;
 
             virtual ~ClientInterface() {
@@ -32,16 +32,18 @@ namespace RType {
                 @param port The port to connect with
                 @return True if the connection succeeded, false otherwise
             */
-            bool Connect(const std::string& host, const uint16_t port) {
+            bool ConnectToServer(const std::string& host, const uint16_t port) {
                 try {
-                    asio::ip::tcp::resolver resolver(context);
+                    host_ = host;
+                    port_ = port;
+                    asio::ip::tcp::resolver resolver(context_);
                     asio::ip::tcp::resolver::results_type endpoints = resolver.resolve(host, std::to_string(port));
 
-                    currentConnection = std::make_unique<connection<T>>(connection<T>::owner::client, context, asio::ip::tcp::socket(context), incomingMessages);
+                    currentTcpConnection_ = std::make_unique<TcpConnection<MessageType>>(owner::client, context_, asio::ip::tcp::socket(context_), incomingTcpMessages_);
 
-                    currentConnection->ConnectToServer(endpoints);
+                    currentTcpConnection_->ConnectToServer(endpoints);
 
-                    contextThread = std::thread([this]() { context.run(); });
+                    contextThread_ = std::thread([this]() { context_.run(); });
                 } catch (std::exception& e) {
                     std::cerr << "Client Exception: " << e.what() << "\n";
                     return false;
@@ -53,15 +55,16 @@ namespace RType {
                 @brief Disconnect from the server
             */
             void Disconnect() {
-                if (IsConnected()) {
-                    currentConnection->Disconnect();
+                if (this->IsConnected()) {
+                    currentTcpConnection_->Disconnect();
                 }
 
-                context.stop();
-                if (contextThread.joinable())
-                    contextThread.join();
+                context_.stop();
+                if (contextThread_.joinable()) {
+                    contextThread_.join();
+                }
 
-                currentConnection.release();
+                currentTcpConnection_.release();
             }
 
             /*
@@ -69,8 +72,8 @@ namespace RType {
                 @return True if the client is connected to a server, false otherwise
             */
             bool IsConnected() {
-                if (currentConnection)
-                    return currentConnection->IsConnected();
+                if (currentTcpConnection_)
+                    return currentTcpConnection_->IsConnected();
                 else
                     return false;
             }
@@ -79,27 +82,30 @@ namespace RType {
                 @brief Send a message to the server
                 @param msg The message to send
             */
-            void Send(const message<T>& msg) {
-                if (IsConnected())
-                    currentConnection->Send(msg);
+            void Send(const message<MessageType>& msg) {
+                if (this->IsConnected())
+                    currentTcpConnection_->Send(msg);
             }
 
             /*
                 @brief Retrieve the queue of messages from the server
                 @return The queue of messages from the server
             */
-            TsQueue<owned_message<T>>& Incoming() {
-                return incomingMessages;
+            TsQueue<owned_message<MessageType, TcpConnection<MessageType>>>& IncomingTcpMessages() {
+                return incomingTcpMessages_;
             }
 
-           protected:
-            asio::io_context context;
-            std::thread contextThread;
-            std::unique_ptr<connection<T>> currentConnection;
+        protected:
+            std::string host_;
+            uint16_t port_;
 
-           private:
+            asio::io_context context_;
+            std::thread contextThread_;
+            std::unique_ptr<TcpConnection<MessageType>> currentTcpConnection_;
+
+        private:
             // This is the thread safe queue of incoming messages from server
-            TsQueue<owned_message<T>> incomingMessages;
+            TsQueue<owned_message<MessageType, TcpConnection<MessageType>>> incomingTcpMessages_;
         };
     }  // namespace net
 }  // namespace RType

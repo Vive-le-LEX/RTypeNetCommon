@@ -26,80 +26,80 @@ namespace RType {
            public:
             // Returns and maintains item at front of Queue
             const T& front() {
-                std::scoped_lock lock(mutex);
-                return queue.front();
+                std::scoped_lock lock(mutex_);
+                return queue_.front();
             }
 
             // Returns and maintains item at back of Queue
             const T& back() {
-                std::scoped_lock lock(mutex);
-                return queue.back();
+                std::scoped_lock lock(mutex_);
+                return queue_.back();
             }
 
             // Removes and returns item from front of Queue
             T pop_front() {
-                std::scoped_lock lock(mutex);
-                auto t = std::move(queue.front());
-                queue.pop_front();
+                std::scoped_lock lock(mutex_);
+                auto t = std::move(queue_.front());
+                queue_.pop_front();
                 return t;
             }
 
             // Removes and returns item from back of Queue
             T pop_back() {
-                std::scoped_lock lock(mutex);
-                auto t = std::move(queue.back());
-                queue.pop_back();
+                std::scoped_lock lock(mutex_);
+                auto t = std::move(queue_.back());
+                queue_.pop_back();
                 return t;
             }
 
             // Adds an item to back of Queue
             void push_back(const T& item) {
-                std::scoped_lock lock(mutex);
-                queue.emplace_back(std::move(item));
+                std::scoped_lock lock(mutex_);
+                queue_.emplace_back(std::move(item));
 
-                std::unique_lock<std::mutex> ul(blockingMutex);
-                cvBlocking.notify_one();
+                std::unique_lock<std::mutex> ul(blockingMutex_);
+                blocking_.notify_one();
             }
 
             // Adds an item to front of Queue
             void push_front(const T& item) {
-                std::scoped_lock lock(mutex);
-                queue.emplace_front(std::move(item));
+                std::scoped_lock lock(mutex_);
+                queue_.emplace_front(std::move(item));
 
-                std::unique_lock<std::mutex> ul(blockingMutex);
-                cvBlocking.notify_one();
+                std::unique_lock<std::mutex> ul(blockingMutex_);
+                blocking_.notify_one();
             }
 
             // Returns true if Queue has no items
             bool empty() {
-                std::scoped_lock lock(mutex);
-                return queue.empty();
+                std::scoped_lock lock(mutex_);
+                return queue_.empty();
             }
 
             // Returns number of items in Queue
             size_t count() {
-                std::scoped_lock lock(mutex);
-                return queue.size();
+                std::scoped_lock lock(mutex_);
+                return queue_.size();
             }
 
             // Clears Queue
             void clear() {
-                std::scoped_lock lock(mutex);
-                queue.clear();
+                std::scoped_lock lock(mutex_);
+                queue_.clear();
             }
 
             void wait() {
                 while (empty()) {
-                    std::unique_lock<std::mutex> ul(blockingMutex);
-                    cvBlocking.wait(ul);
+                    std::unique_lock<std::mutex> ul(blockingMutex_);
+                    blocking_.wait(ul);
                 }
             }
 
            protected:
-            std::mutex mutex;
-            std::deque<T> queue;
-            std::condition_variable cvBlocking;
-            std::mutex blockingMutex;
+            std::mutex mutex_;
+            std::deque<T> queue_;
+            std::condition_variable blocking_;
+            std::mutex blockingMutex_;
         };
     }  // namespace net
 }  // namespace RType
