@@ -41,6 +41,34 @@ namespace RType {
     typedef char Username_t[32];
     typedef char ErrorMessage_t[128];
 
+#define MAX_PLAYERS 16
+#define MAX_LOBBIES 16
+
+    typedef struct Lobby_s {
+        uuids::uuid uuid;
+        uint16_t port;
+        uint16_t maxPlayers;
+        uint16_t playerCount = 0;
+        struct connectedPlayers_s {
+            uuids::uuid uuid;
+            Username_t username;
+        } connectedPlayers[MAX_PLAYERS] = {};
+        bool started = false;
+    } Lobby_t;
+
+    inline std::ostream& operator<<(std::ostream& os, const Lobby_t& lobby) {
+        os << "Lobby {\n"
+           << "\tport: " << lobby.port << ",\n"
+           << "\tuuid: " << lobby.uuid << ",\n"
+           << "\tmaxPlayers: " << lobby.maxPlayers << ",\n"
+           << "\tplayers (" << lobby.playerCount << "): \n";
+
+        for (int i = 0; i < lobby.playerCount; i++) {
+            os << "\t  - " << lobby.connectedPlayers[i].username << "&\n";
+        }
+        return os << "}";
+    }
+
     enum class ShipType : uint8_t {
         R9A = 0,
         R9E3 = 1,
