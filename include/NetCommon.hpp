@@ -11,9 +11,6 @@
 
 #pragma once
 
-#define UUID_SYSTEM_GENERATOR
-#include <uuid.h>
-
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
