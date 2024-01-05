@@ -23,6 +23,7 @@
 #define UUID_SYSTEM_GENERATOR
 #include <uuid.h>
 
+#include <bitset>
 #include <glm/glm.hpp>
 
 namespace RType {
@@ -39,6 +40,84 @@ namespace RType {
 
     typedef char Username_t[32];
     typedef char ErrorMessage_t[128];
+
+    enum class ShipType : uint8_t {
+        R9A = 0,
+        R9E3 = 1,
+        R90 = 2,
+        R100 = 3,
+        UFCS05 = 4,
+        UFDD02 = 5,
+        UFHC007 = 6,
+        POW = 7,
+
+        COUNT
+    };
+
+    enum class WeaponType : uint8_t {
+        BLASTER = 4,
+        LASER = 2,
+        MISSILE = 8,
+        BURST = 16,
+
+        COUNT
+    };
+
+    enum class ShipColor : uint8_t {
+        RED = 0,
+        BLUE = 1,
+        GREEN = 2,
+        YELLOW = 3,
+
+        COUNT
+    };
+
+    typedef struct {
+        ShipType type;
+        WeaponType weapon;
+        ShipColor color;
+        union {
+            uint16_t ammo;
+            uint16_t overheat;
+            uint16_t charge;
+        } weaponInfo;
+    } ShipInfo_t;
+
+    typedef struct Player_s {
+        uuids::uuid uuid;
+        Username_t username;
+
+        uint8_t health = 100;
+        uint8_t shield = 50;
+
+        ShipInfo_t shipInfo;
+
+        uint16_t kills = 0;
+        uint8_t lives = 5;
+        uint64_t score = 0;
+
+        bool isAlive = true;
+
+        glm::vec2 position = {0, 0};
+        glm::vec2 velocity = {0, 0};
+
+        bool operator==(const Player_s& rhs) const {
+            return uuid == rhs.uuid;
+        }
+
+    } Player_t;
+
+    inline std::ostream& operator<<(std::ostream& os, const Player_t& player) {
+        return os << "Player {"
+                  << "uuid: " << player.uuid << ", "
+                  << "username: " << player.username << ", "
+                  << "health: " << player.health << ", "
+                  << "kills: " << player.kills << ", "
+                  << "lives: " << player.lives << ", "
+                  << "score: " << player.score << ", "
+                  << "position: " << player.position.x << ", " << player.position.y << ", "
+                  << "velocity: " << player.velocity.x << ", " << player.velocity.y << "}";
+    }
 
     ////////////////////////////////////////////////////////////////
     //                          Payloads                          //
