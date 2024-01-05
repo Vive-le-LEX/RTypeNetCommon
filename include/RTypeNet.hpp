@@ -23,6 +23,8 @@
 #define UUID_SYSTEM_GENERATOR
 #include <uuid.h>
 
+#include <glm/glm.hpp>
+
 namespace RType {
 
     static uuids::uuid GenerateUuid() {
