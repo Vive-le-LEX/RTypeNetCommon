@@ -13,8 +13,6 @@
 
 #include <iostream>
 
-#include "RType.hpp"
-
 namespace RType {
 
     enum class ServerMessages : uint32_t {

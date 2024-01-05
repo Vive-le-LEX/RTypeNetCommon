@@ -11,6 +11,7 @@ set(IS_BUILDING_DOC OFF)
 
 include(external/FindAsio.cmake)
 include(external/FindStduuid.cmake)
+include(external/FindGlm.cmake)
 include(external/FindGTest.cmake)
 
 set(IS_TESTING ${IS_TESTING_TMP})

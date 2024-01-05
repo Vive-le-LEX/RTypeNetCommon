@@ -5,8 +5,6 @@ if(NOT STDUUID_LIB)
         stduuid
         GIT_REPOSITORY git@github.com:mariusbancila/stduuid.git
         GIT_TAG master
-        CONFIGURE_COMMAND ""
-        BUILD_COMMAND ""
     )
 
     FetchContent_MakeAvailable(stduuid)
