@@ -149,7 +149,7 @@ namespace RType {
 
             virtual void ReadValidation(RType::net::ServerInterface<MessageType>* server = nullptr) final {
                 if (this->connectionOwner_ == owner::server) {
-                    AsyncTimer::GetInstance()->addTimer(this->id_, 1000, [this, server]() {
+                    AsyncTimer::GetInstance()->addTimer(this->id_, 1=5000, [this, server]() {
                         std::cout << "Client Timed out while reading validation" << std::endl;
                         this->tcpSocket.close();
                     });
