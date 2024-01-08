@@ -62,6 +62,8 @@ inline std::string getIp(void) {
 
     return ip;
 }
+#elif __APPLE__
+inline std::string getIp(void) { return ""; }
 #endif
 
 class AsyncTimer : public Singleton<AsyncTimer> {
