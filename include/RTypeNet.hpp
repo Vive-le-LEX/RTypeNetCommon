@@ -107,10 +107,10 @@ namespace RType {
     };
 
     enum class ShipColor : uint8_t {
-        RED = 0,
-        BLUE = 1,
+        BLUE = 0,
+        MAGENTA = 1,
         GREEN = 2,
-        YELLOW = 3,
+        RED = 3,
 
         COUNT
     };
@@ -226,6 +226,7 @@ namespace RType {
             uuids::uuid lobbyUuid;   ///< The uuid of the lobby
             uuids::uuid clientUuid;  ///< The uuid of the client
             Username_t username;     ///< The username of the client
+            ShipColor color;         ///< The color of the ship
         } JoinLobby_t;
 
         /// @private
@@ -309,5 +310,6 @@ namespace RType {
                       << "\tposition:   " << move.position.x << ", " << move.position.y << ",\n"
                       << "\tvelocity:   " << move.velocity.x << ", " << move.velocity.y << "\n}\n";
         }
+
     }  // namespace udp
 }  // namespace RType
