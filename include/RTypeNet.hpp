@@ -226,7 +226,6 @@ namespace RType {
             uuids::uuid lobbyUuid;   ///< The uuid of the lobby
             uuids::uuid clientUuid;  ///< The uuid of the client
             Username_t username;     ///< The username of the client
-            ShipColor color;         ///< The color of the ship
         } JoinLobby_t;
 
         /// @private
