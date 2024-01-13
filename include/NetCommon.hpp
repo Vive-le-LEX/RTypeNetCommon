@@ -32,9 +32,9 @@
 #elif __linux__
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <sys/ioctl.h>
 #include <unistd.h>
 #endif
 
@@ -66,8 +66,18 @@ inline std::string getIp(void) {
 inline std::string getIp(void) { return ""; }
 #endif
 
+/**
+ * @brief A class to add timers asynchronously
+ *
+ */
 class AsyncTimer : public Singleton<AsyncTimer> {
    public:
+    /**
+     * @brief Construct a new AsyncTimer object
+     * @param id The id of the timer
+     * @param ms The timeout in milliseconds
+     * @param callback The callback to call when the timer is done
+     */
     void addTimer(uint32_t id, uint32_t ms, std::function<void()> callback) {
         callbacks_[id] = std::move(callback);
         std::thread([this, id, ms]() {
@@ -79,6 +89,10 @@ class AsyncTimer : public Singleton<AsyncTimer> {
         }).detach();
     }
 
+    /**
+     * @brief Remove a timer
+     * @param id The id of the timer
+     */
     void removeTimer(uint32_t id) {
         if (callbacks_.find(id) != callbacks_.end())
             callbacks_.erase(id);

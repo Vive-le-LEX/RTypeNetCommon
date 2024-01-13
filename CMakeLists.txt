@@ -21,3 +21,8 @@ target_include_directories(${PROJECT_NAME} INTERFACE ${stduuid_SOURCE_DIR}/inclu
 target_include_directories(${PROJECT_NAME} INTERFACE ${stduuid_SOURCE_DIR}/gsl)
 target_include_directories(${PROJECT_NAME} INTERFACE ${asio_SOURCE_DIR}/asio/include)
 target_include_directories(${PROJECT_NAME} INTERFACE ${glm_SOURCE_DIR}/glm)
+
+if (RTYPE_BUILD_DOC)
+    file(GLOB_RECURSE ALL_MARKDOWNS "${CMAKE_CURRENT_SOURCE_DIR}/docs/*.md")
+    include(docs/BuildDocs.cmake)
+endif()

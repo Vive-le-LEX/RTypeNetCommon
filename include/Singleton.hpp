@@ -18,6 +18,11 @@
 #include <shared_mutex>
 #include <utility>
 
+/**
+ * @brief Singleton class
+ *
+ * @tparam Derived
+ */
 template <typename Derived>
 class Singleton {
    public:

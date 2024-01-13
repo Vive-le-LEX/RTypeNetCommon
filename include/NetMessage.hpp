@@ -17,7 +17,7 @@ namespace RType {
 
     namespace net {
 
-        /*
+        /**
             @brief Message Header is sent at start of all messages. The template allows us
             to use "enum class" to ensure that the messages are valid at compile time
 
@@ -25,11 +25,11 @@ namespace RType {
         */
         template <typename T>
         struct message_header {
-            T id{};
-            uint32_t size = 0;
+            T id{}; ///< Id of the message
+            uint32_t size = 0; ///< Size of the message
         };
 
-        /*
+        /**
             @struct message
             @brief Message Body contains a header and a std::vector, containing raw bytes
             of information. This way the message can be variable length, but the size
@@ -39,17 +39,17 @@ namespace RType {
         */
         template <typename T>
         struct message {
-            message_header<T> header{};
-            std::vector<uint8_t> body;
+            message_header<T> header{}; ///< Header
+            std::vector<uint8_t> body; ///< Body of the message
 
-            /*
+            /**
                 @brief Returns size of entire message packet in bytes
             */
             [[nodiscard]] size_t size() const {
                 return body.size();
             }
 
-            /*
+            /**
                 @brief Returns a friendly description of the message
             */
             friend std::ostream& operator<<(std::ostream& os, const message<T>& msg) {
@@ -57,7 +57,7 @@ namespace RType {
                 return os;
             }
 
-            /*
+            /**
                 @brief Pushes any POD-like data into the message buffer
 
                 @tparam DataType POD-like data type
@@ -79,7 +79,7 @@ namespace RType {
                 return msg;
             }
 
-            /*
+            /**
                 @brief Pulls any POD-like data form the message buffer
 
                 @tparam DataType POD-like data type
@@ -102,7 +102,7 @@ namespace RType {
             }
         };
 
-        /*
+        /**
             @struct owned_message
             @brief An "owned" message is identical to a regular message, but it is associated with
             a connection. On a server, the owner would be the client that sent the message,
@@ -112,8 +112,8 @@ namespace RType {
         */
         template< typename T, typename ConnectionType>
         struct owned_message {
-            std::shared_ptr<ConnectionType> remote = nullptr;
-            message<T> msg;
+            std::shared_ptr<ConnectionType> remote = nullptr; ///< Remote connection
+            message<T> msg; ///< Actual message
 
             friend std::ostream& operator<<(std::ostream& os, const owned_message<T, ConnectionType>& message) {
                 os << message.msg;

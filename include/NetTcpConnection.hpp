@@ -16,19 +16,42 @@
 
 namespace RType {
     namespace net {
+        /// @private
         template <typename T>
         class ServerInterface;
 
+        /**
+         * @brief TCP Connection class
+         *
+         * @tparam MessageType
+         */
         template <typename MessageType>
         class TcpConnection : public AConnection<MessageType>, public std::enable_shared_from_this<TcpConnection<MessageType>> {
            public:
+            /**
+             * @brief Construct a new Tcp Connection object
+             *
+             * @param parent The type of the connection Server or Client
+             * @param context Asio context
+             * @param socket  Asio socket
+             * @param incomingMessages Incoming messages queue
+             */
             TcpConnection(owner parent,
                           asio::io_context& context,
                           asio::ip::tcp::socket socket,
                           TsQueue<owned_message<MessageType, TcpConnection<MessageType>>>& incomingMessages) : AConnection<MessageType>(parent, context, std::move(socket), incomingMessages) {}
 
+            /**
+             * @brief Destroy the Tcp Connection object
+             *
+             */
             virtual ~TcpConnection() = default;
 
+            /**
+             * @brief Used to connect a client to a server
+             *
+             * @param endpoints
+             */
             void ConnectToServer(const asio::ip::tcp::resolver::results_type& endpoints) {
                 if (this->connectionOwner_ == owner::server) {
                     throw std::runtime_error("Cannot connect a server to a server");
@@ -46,6 +69,11 @@ namespace RType {
                                     });
             }
 
+            /**
+             * @brief Send a message
+             *
+             * @param msg
+             */
             void Send(const message<MessageType>& msg) override {
                 asio::post(this->asioContext_,
                            [this, msg]() {

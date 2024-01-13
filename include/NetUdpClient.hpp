@@ -19,11 +19,28 @@
 
 namespace RType {
     namespace net {
+        /**
+         * @brief Abstract class for an UDP client
+         *
+         */
         class UdpClientInterface : public UdpConnection {
            public:
+            /**
+             * @brief Construct a new Udp Client Interface object
+             *
+             * @param context ASIO context
+             * @param host The host to connect to
+             * @param port The port to connect to
+             */
             UdpClientInterface(asio::io_context& context, std::string host, uint16_t port) : UdpConnection(context, port),
                                                                                              host_(std::move(host)) {}
 
+            /**
+             * @brief Connect to the server
+             *
+             * @return true
+             * @return false
+             */
             bool Connect() {
                 if (IsConnected()) {
                     return false;
@@ -60,6 +77,12 @@ namespace RType {
                 return true;
             }
 
+            /**
+             * @brief Reconnect to the server
+             *
+             * @return true
+             * @return false
+             */
             bool Reconnect() {
                 if (!Disconnect())
                     return false;
@@ -67,6 +90,12 @@ namespace RType {
                 return Connect();
             }
 
+            /**
+             * @brief connect to the server asynchronously
+             *
+             * @return true
+             * @return false
+             */
             bool ConnectAsync() {
                 if (IsConnected())
                     return false;
@@ -79,15 +108,49 @@ namespace RType {
                 return true;
             }
 
+            /**
+             * @brief Get the Host IP
+             *
+             * @return the host IP
+             */
             [[nodiscard]] std::string GetHost() const noexcept { return host_; }
 
            protected:
+            /**
+             * @brief Function called when the client is connected
+             *
+             */
             virtual void onConnected() {}
+
+            /**
+             * @brief Function called when the client is disconnected
+             *
+             */
             virtual void onDisconnected() {}
 
+            /**
+             * @brief Function called when a message is received
+             *
+             * @param endpoint The endpoint from which the message was received
+             * @param buffer The buffer containing the message
+             * @param size The size of the message
+             */
             virtual void onReceived(const asio::ip::udp::endpoint& endpoint, const void* buffer, size_t size) {}
+
+            /**
+             * @brief Function called when a message is sent
+             *
+             * @param endpoint The endpoint to which the message was sent
+             * @param buffer The buffer containing the message
+             * @param size The size of the message
+             */
             virtual void onSent(const asio::ip::udp::endpoint& endpoint, const void* buffer, size_t size) {}
 
+            /**
+             * @brief Function called when an error occurs
+             *
+             * @param error The error code
+             */
             virtual void onError(const asio::error_code& error) {}
 
            private:

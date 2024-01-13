@@ -17,13 +17,26 @@
 
 namespace RType {
     namespace net {
-
+        /**
+         * @brief UdpServerInterface is the base class for all UDP servers
+         */
         class UdpServerInterface : public UdpConnection {
            public:
+            /**
+             * @brief UdpServerInterface constructor
+             * @param context The asio context
+             * @param port The port to bind to
+             */
             UdpServerInterface(asio::io_context& context, uint16_t port) : UdpConnection(context, port) {
                 endpoint_ = asio::ip::udp::endpoint(asio::ip::udp::v4(), port);
             }
 
+            /**
+             * @brief Start the server
+             *
+             * @return true
+             * @return false
+             */
             bool Start() {
                 if (this->IsStarted()) {
                     std::cout << "[UDP] Server already started" << std::endl;
@@ -60,6 +73,12 @@ namespace RType {
                 return true;
             }
 
+            /**
+             * @brief Stop the server
+             *
+             * @return true
+             * @return false
+             */
             bool Stop() {
                 if (!this->IsStarted()) {
                     std::cout << "[UDP] Server is not started" << std::endl;
@@ -84,10 +103,22 @@ namespace RType {
                 return true;
             }
 
+            /**
+             * @brief IsStarted returns whether the server is started or not
+             *
+             * @return true
+             * @return false
+             */
             [[nodiscard]] bool IsStarted() const { return _started; }
 
            protected:
+            /**
+             * @brief onStarted is called when the server is started
+             */
             virtual void onStarted() = 0;
+            /**
+             * @brief onStopped is called when the server is stopped
+             */
             virtual void onStopped() = 0;
 
            private:

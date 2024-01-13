@@ -11,22 +11,31 @@
 
 #pragma once
 #include "NetCommon.hpp"
-#include "NetTcpConnection.hpp"
 #include "NetMessage.hpp"
+#include "NetTcpConnection.hpp"
 #include "NetTsqueue.hpp"
 
 namespace RType {
     namespace net {
+        /**
+         * @brief Abstract class for a client
+         *
+         * @tparam MessageType
+         */
         template <typename MessageType>
         class ClientInterface {
-        public:
+           public:
+            /**
+             * @brief Construct a new Client Interface object
+             *
+             */
             ClientInterface() = default;
 
             virtual ~ClientInterface() {
                 Disconnect();
             }
 
-            /*
+            /**
                 @brief Connect to a server
                 @param host The hostname/ip-address of the server
                 @param port The port to connect with
@@ -51,7 +60,7 @@ namespace RType {
                 return true;
             }
 
-            /*
+            /**
                 @brief Disconnect from the server
             */
             void Disconnect() {
@@ -67,7 +76,7 @@ namespace RType {
                 currentTcpConnection_.release();
             }
 
-            /*
+            /**
                 @brief Check if the client is connected to a server
                 @return True if the client is connected to a server, false otherwise
             */
@@ -78,7 +87,7 @@ namespace RType {
                     return false;
             }
 
-            /*
+            /**
                 @brief Send a message to the server
                 @param msg The message to send
             */
@@ -87,7 +96,7 @@ namespace RType {
                     currentTcpConnection_->Send(msg);
             }
 
-            /*
+            /**
                 @brief Retrieve the queue of messages from the server
                 @return The queue of messages from the server
             */
@@ -95,15 +104,15 @@ namespace RType {
                 return incomingTcpMessages_;
             }
 
-        protected:
-            std::string host_;
-            uint16_t port_;
+           protected:
+            std::string host_;  ///< The hostname/ip-address of the server
+            uint16_t port_;     ///< The port to connect with
 
-            asio::io_context context_;
-            std::thread contextThread_;
-            std::unique_ptr<TcpConnection<MessageType>> currentTcpConnection_;
+            asio::io_context context_;                                          ///< The asio context
+            std::thread contextThread_;                                         ///< The asio context thread
+            std::unique_ptr<TcpConnection<MessageType>> currentTcpConnection_;  ///< The current tcp connection
 
-        private:
+           private:
             // This is the thread safe queue of incoming messages from server
             TsQueue<owned_message<MessageType, TcpConnection<MessageType>>> incomingTcpMessages_;
         };

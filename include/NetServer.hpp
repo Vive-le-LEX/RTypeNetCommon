@@ -18,13 +18,23 @@
 
 namespace RType {
     namespace net {
+        /**
+         * @brief Abstract class for a Server
+         *
+         * @tparam T Message type
+         */
         template <typename T>
         class TcpConnection;
 
+        /**
+         * @brief Abstract class for a Server
+         *
+         * @tparam MessageType
+         */
         template <typename MessageType>
         class ServerInterface {
            public:
-            /*
+            /**
                 @brief Construct the server interface
                 @param port The port to listen on
             */
@@ -32,11 +42,14 @@ namespace RType {
                 std::cout << "[SERVER] Listening on: " << getIp() << ":" << port_ << std::endl;
             }
 
+            /**
+                @brief Destroy the server interface
+            */
             virtual ~ServerInterface() {
                 Stop();
             }
 
-            /*
+            /**
                 @brief Start the server
                 @return True if the server started successfully, false otherwise
              */
@@ -53,7 +66,7 @@ namespace RType {
                 return true;
             }
 
-            /*
+            /**
                 @brief Stop the server
             */
             void Stop() {
@@ -64,7 +77,7 @@ namespace RType {
                 std::cout << "[SERVER] Stopped!\n";
             }
 
-            /*
+            /**
                 @brief Wait for a client to connect, this function is Asynchronous.
                 Prime context with an instruction to wait until a socket connects. This
                 is the purpose of an "acceptor" object. It will provide a unique socket
@@ -97,7 +110,7 @@ namespace RType {
                     });
             }
 
-            /*
+            /**
                 @brief Send a message to a specific client
                 @param client The client to send the message to
                 @param msg The message to send
@@ -116,6 +129,12 @@ namespace RType {
                 }
             }
 
+            /**
+             * @brief Send a message to a specific client
+             *
+             * @param id Client id
+             * @param msg The message to send
+             */
             void MessageClient(uint32_t id, const message<MessageType>& msg) {
                 auto client = GetClientById(id);
                 if (client != nullptr) {
@@ -123,7 +142,7 @@ namespace RType {
                 }
             }
 
-            /*
+            /**
                 @brief Send a message to all clients
                 @param msg The message to send
                 @param ignoreClient A client to ignore
@@ -148,7 +167,7 @@ namespace RType {
                         std::remove(activeTcpConnections_.begin(), activeTcpConnections_.end(), nullptr), activeTcpConnections_.end());
             }
 
-            /*
+            /**
                 @brief Force update the server
                 @param maxMessages The maximum number of messages to process
                 @param wait Whether to wait for a message
@@ -166,6 +185,12 @@ namespace RType {
                 }
             }
 
+            /**
+             * @brief Get the Client By Id object
+             *
+             * @param id The client id
+             * @return std::shared_ptr<TcpConnection<MessageType>>
+             */
             std::shared_ptr<TcpConnection<MessageType>> GetClientById(uint32_t id) {
                 for (auto& client : activeTcpConnections_) {
                     if (client->GetID() == id)
@@ -174,6 +199,11 @@ namespace RType {
                 return nullptr;
             }
 
+            /**
+             * @brief Get the Clients list
+             *
+             * @return std::deque<std::shared_ptr<TcpConnection<MessageType>>>
+             */
             std::deque<std::shared_ptr<TcpConnection<MessageType>>> GetClients() {
                 return activeTcpConnections_;
             }
@@ -203,18 +233,18 @@ namespace RType {
             virtual void OnClientValidated(std::shared_ptr<TcpConnection<MessageType>> client) = 0;
 
            protected:
-            uint16_t port_;
+            uint16_t port_;  ///< Port to listen on
 
-            TsQueue<owned_message<MessageType, TcpConnection<MessageType>>> incomingTcpMessages_;
+            TsQueue<owned_message<MessageType, TcpConnection<MessageType>>> incomingTcpMessages_;  ///< Incoming message queue
 
-            std::deque<std::shared_ptr<TcpConnection<MessageType>>> activeTcpConnections_;
+            std::deque<std::shared_ptr<TcpConnection<MessageType>>> activeTcpConnections_;  ///< Active connections
 
-            asio::io_context asioContext_;
-            std::thread threadContext_;
+            asio::io_context asioContext_;  ///< ASIO context for networking operations
+            std::thread threadContext_;     ///< Thread context for networking events
 
-            asio::ip::tcp::acceptor asioAcceptor_;
+            asio::ip::tcp::acceptor asioAcceptor_;  ///< Acceptor to allow client connection requests
 
-            uint32_t IDCounter_ = 10000;
+            uint32_t IDCounter_ = 10000;  ///< ID counter for clients
         };
     }  // namespace net
 }  // namespace RType
