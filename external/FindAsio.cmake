@@ -4,7 +4,7 @@ if(NOT ASIO_LIB)
     message(STATUS "Asio library not found, downloading from github")
     FetchContent_Declare(
         asio
-        GIT_REPOSITORY git@github.com:chriskohlhoff/asio.git
+        GIT_REPOSITORY https://github.com/chriskohlhoff/asio
         GIT_TAG master
         CONFIGURE_COMMAND ""
         BUILD_COMMAND ""
