@@ -296,7 +296,7 @@ namespace RType {
         /**
          * @brief Payload for the ClientMove event
          */
-        typedef struct {
+        typedef struct Move_s {
             const ServerMessages messayeType = ServerMessages::ClientMove;  ///< The type of the message
             uuids::uuid clientUuid;                                         ///< The uuid of the client
             glm::vec2 position;                                             ///< The position of the client
