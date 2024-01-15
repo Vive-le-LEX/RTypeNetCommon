@@ -310,6 +310,12 @@ namespace RType {
                       << "\tposition:   " << move.position.x << ", " << move.position.y << ",\n"
                       << "\tvelocity:   " << move.velocity.x << ", " << move.velocity.y << "\n}\n";
         }
+        
+        typedef struct {
+            const ServerMessages messayeType = ServerMessages::ClientMove;  ///< The type of the message
+            uuids::uuid clientUuid;                                         ///< The uuid of the client
+            glm::vec2 position;                                             ///< The position of the shoot
+        } Shoot_t;
 
     }  // namespace udp
 }  // namespace RType
