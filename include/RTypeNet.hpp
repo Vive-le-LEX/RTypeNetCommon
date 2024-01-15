@@ -311,8 +311,8 @@ namespace RType {
                       << "\tvelocity:   " << move.velocity.x << ", " << move.velocity.y << "\n}\n";
         }
         
-        typedef struct {
-            const ServerMessages messayeType = ServerMessages::ClientMove;  ///< The type of the message
+        typedef struct Shoot_s {
+            const ServerMessages messayeType = ServerMessages::ClientShoot;  ///< The type of the message
             uuids::uuid clientUuid;                                         ///< The uuid of the client
             glm::vec2 position;                                             ///< The position of the shoot
             u_int8_t id;                                                    ///< The ID of the bullet
