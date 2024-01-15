@@ -315,6 +315,7 @@ namespace RType {
             const ServerMessages messayeType = ServerMessages::ClientMove;  ///< The type of the message
             uuids::uuid clientUuid;                                         ///< The uuid of the client
             glm::vec2 position;                                             ///< The position of the shoot
+            u_int8_t id;                                                    ///< The ID of the bullet
         } Shoot_t;
 
     }  // namespace udp
