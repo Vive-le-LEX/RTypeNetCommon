@@ -318,6 +318,14 @@ namespace RType {
             glm::vec2 target_velocity;                                      ///< The velocity of the shoot
             u_int8_t id;                                                    ///< The ID of the bullet
         } Shoot_t;
+        
+        typedef struct AddEnemy_s {
+            const ServerMessages messayeType = ServerMessages::ClientShoot; ///< The type of the message
+            uint8_t  id;                                                    ///< The ID of the enemy
+            glm::vec2 position;                                             ///< The position of the enemy
+            glm::vec2 velocity;                                             ///< The velocity of the enemy
+            double time;                                                    ///< Time of the enemy slide animation
+        } AddEnemy;
 
     }  // namespace udp
 }  // namespace RType
