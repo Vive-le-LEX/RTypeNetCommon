@@ -35,6 +35,8 @@ namespace RType {
         ServerClientJoinedLobby,
         ServerClientLeftLobby,
         ServerLobbyStarted,
+        
+        ClientAddEnemy,
 
         ClientMove,
         ClientShoot,
