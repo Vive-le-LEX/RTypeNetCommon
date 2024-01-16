@@ -11,8 +11,6 @@
 
 #pragma once
 
-#include <utility>
-
 #include "NetCommon.hpp"
 #include "NetMessage.hpp"
 #include "NetUdpConnection.hpp"
@@ -32,50 +30,7 @@ namespace RType {
              * @param host The host to connect to
              * @param port The port to connect to
              */
-            UdpClientInterface(asio::io_context& context, std::string host, uint16_t port) : UdpConnection(context, port),
-                                                                                             host_(std::move(host)) {}
-
-            /**
-             * @brief Connect to the server
-             *
-             * @return true
-             * @return false
-             */
-            bool Connect() {
-                if (IsConnected()) {
-                    return false;
-                }
-
-                assert(!host_.empty() && "Server address must not be empty!");
-                if (host_.empty()) {
-                    return false;
-                }
-
-                assert((port_ > 0) && "Server port number must be valid!");
-                if (port_ <= 0) {
-                    return false;
-                }
-
-                endpoint_ = asio::ip::udp::endpoint(asio::ip::make_address(host_), (unsigned short)port_);
-                socket_.open(endpoint_.protocol());
-
-                socket_.bind(asio::ip::udp::endpoint(endpoint_.protocol(), 0));
-
-                receiveBuffer_.resize(1024);
-                receiveBufferLimit_ = 4096;
-
-                bytesSending_ = 0;
-                bytesSent_ = 0;
-                bytesReceived_ = 0;
-                datagramsSent_ = 0;
-                datagramsReceived_ = 0;
-
-                connected_ = true;
-
-                onConnected();
-
-                return true;
-            }
+            UdpClientInterface(asio::io_context& context, std::string host, uint16_t port) : UdpConnection(context, host, port, receiveQueue_) {}
 
             /**
              * @brief Reconnect to the server
@@ -154,7 +109,7 @@ namespace RType {
             virtual void onError(const asio::error_code& error) {}
 
            private:
-            std::string host_;
+            TsQueue<UdpMessage_t> receiveQueue_;
         };
     }  // namespace net
 

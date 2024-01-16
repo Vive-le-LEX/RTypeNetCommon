@@ -58,13 +58,22 @@ inline std::string getIp(void) {
     close(fd);
 
     char ip[INET_ADDRSTRLEN];
-    strcpy(ip, inet_ntoa(((sockaddr_in*)&ifr.ifr_addr)->sin_addr));
+    strcpy(ip, inet_ntoa(((sockaddr_in *)&ifr.ifr_addr)->sin_addr));
 
     return ip;
 }
 #elif __APPLE__
 inline std::string getIp(void) { return ""; }
 #endif
+/**
+ * @brief UdpMessage_t is a structure to store a UDP message
+ *
+ */
+typedef struct UdpMessage_s {
+    asio::ip::udp::endpoint remote;  ///< The endpoint of the message
+    const void *buffer;              ///< The buffer of the message
+    size_t size;                     ///< The size of the message
+} UdpMessage_t;
 
 /**
  * @brief A class to add timers asynchronously

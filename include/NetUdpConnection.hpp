@@ -12,6 +12,7 @@
 #pragma once
 
 #include "NetCommon.hpp"
+#include "NetTsqueue.hpp"
 
 namespace RType {
     namespace net {
@@ -27,14 +28,56 @@ namespace RType {
              * @param context ASIO context
              * @param port The port to listen on
              */
-            UdpConnection(asio::io_context& context, uint16_t port) : context_(context),
-                                                                      port_(port),
-                                                                      socket_(context),
-                                                                      bytesSending_(0),
-                                                                      bytesSent_(0),
-                                                                      bytesReceived_(0),
-                                                                      datagramsSent_(0),
-                                                                      datagramsReceived_(0) {}
+            UdpConnection(asio::io_context& context, std::string& host, uint16_t port, TsQueue<UdpMessage_t>& queue) : context_(context),
+                                                                                                                       port_(port),
+                                                                                                                       socket_(context),
+                                                                                                                       bytesSending_(0),
+                                                                                                                       bytesSent_(0),
+                                                                                                                       bytesReceived_(0),
+                                                                                                                       datagramsSent_(0),
+                                                                                                                       datagramsReceived_(0),
+                                                                                                                       receiveQueue_(queue) {}
+            /**
+             * @brief Connect to the remote
+             *
+             * @return true
+             * @return false
+             */
+            bool Connect() {
+                if (IsConnected()) {
+                    return false;
+                }
+
+                assert(!host_.empty() && "Server address must not be empty!");
+                if (host_.empty()) {
+                    return false;
+                }
+
+                assert((port_ > 0) && "Server port number must be valid!");
+                if (port_ <= 0) {
+                    return false;
+                }
+
+                endpoint_ = asio::ip::udp::endpoint(asio::ip::make_address(host_), (unsigned short)port_);
+                socket_.open(endpoint_.protocol());
+
+                socket_.bind(asio::ip::udp::endpoint(endpoint_.protocol(), 0));
+
+                port_ = socket_.local_endpoint().port();
+
+                receiveBuffer_.resize(1024);
+                receiveBufferLimit_ = 4096;
+
+                bytesSending_ = 0;
+                bytesSent_ = 0;
+                bytesReceived_ = 0;
+                datagramsSent_ = 0;
+                datagramsReceived_ = 0;
+
+                connected_ = true;
+
+                return true;
+            }
 
             /**
              * @brief Disconnect
@@ -83,8 +126,6 @@ namespace RType {
                 if (sent > 0) {
                     ++datagramsSent_;
                     bytesSent_ += sent;
-
-                    onSent(endpoint, sent);
                 }
 
                 if (ec) {
@@ -149,8 +190,6 @@ namespace RType {
                         bytesSending_ = 0;
                         ++datagramsSent_;
                         bytesSent_ += sent;
-
-                        onSent(endpoint_, sent);
                     }
 
                     if (ec) {
@@ -204,12 +243,13 @@ namespace RType {
                 ++datagramsReceived_;
                 bytesReceived_ += received;
 
-                onReceived(endpoint, buffer, received);
-
                 if (ec) {
                     SendError(ec);
                     Disconnect();
                 }
+
+                UdpMessage_t msg = {endpoint, buffer, received};
+                receiveQueue_.push_back(msg);
 
                 return received;
             }
@@ -247,7 +287,8 @@ namespace RType {
                     ++datagramsReceived_;
                     bytesReceived_ += received;
 
-                    onReceived(endpoint_, receiveBuffer_.data(), received);
+                    UdpMessage_t msg = {endpoint_, receiveBuffer_.data(), received};
+                    receiveQueue_.push_back(msg);
 
                     if (receiveBuffer_.size() == received) {
                         // Check the reception buffer limit
@@ -357,43 +398,8 @@ namespace RType {
             [[nodiscard]] bool IsReceiving() const noexcept { return receiving_; }
 
            protected:
-            /**
-             * @brief Function called when the client is connected
-             *
-             */
-            virtual void onConnected() = 0;
-            /**
-             * @brief Function called when the client is disconnected
-             *
-             */
-            virtual void onDisconnected() = 0;
-
-            /**
-             * @brief Function called when a datagram is received
-             *
-             * @param endpoint The endpoint of the received datagram
-             * @param buffer The buffer of the received datagram
-             * @param size The size of the received datagram
-             */
-            virtual void onReceived(const asio::ip::udp::endpoint& endpoint, const void* buffer, size_t size) = 0;
-            /**
-             * @brief Function called when a datagram is sent
-             *
-             * @param endpoint The endpoint of the sent datagram
-             * @param sent The size of the sent datagram
-             */
-            virtual void onSent(const asio::ip::udp::endpoint& endpoint, size_t sent) = 0;
-
-            /**
-             * @brief Function called when an error occurs
-             *
-             * @param error The error code
-             * @param category The error category
-             * @param message The error message
-             */
-            virtual void onError(int error, const std::string& category, const std::string& message) = 0;
-
-            uint16_t port_;  ///< Port to listen on
+            std::string host_;  ///< The hostname/ip-address of the server
+            uint16_t port_;     ///< Port to listen on
 
             asio::io_context& context_;  ///< ASIO context for networking operations
 
@@ -414,6 +420,8 @@ namespace RType {
             uint64_t bytesReceived_;      ///< Bytes received
             uint64_t datagramsSent_;      ///< Datagrams sent
             uint64_t datagramsReceived_;  ///< Datagrams received
+
+            TsQueue<UdpMessage_t>& receiveQueue_;
 
             /**
              * @brief Disconnect the client (internal)
@@ -438,9 +446,6 @@ namespace RType {
 
                 // Clear send/receive buffers
                 ClearBuffers();
-
-                // Call the client disconnected handler
-                onDisconnected();
 
                 return true;
             }
@@ -486,7 +491,7 @@ namespace RType {
                     (ec == asio::error::operation_aborted))
                     return;
 
-                onError(ec.value(), ec.category().name(), ec.message());
+                std::cout << "[UDP] Error: " << ec.message() << std::endl;
             }
         };
     }  // namespace net
